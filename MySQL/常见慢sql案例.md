@@ -228,3 +228,12 @@ order by null 不用排序。
 ![在这里插入图片描述](https://img-blog.csdnimg.cn/b1fde4a99ea647daa58edab5e87f038b.png)
 索引失效
 ![在这里插入图片描述](https://img-blog.csdnimg.cn/6c4a6bae821f4599a47c6dc503d7a459.png)
+
+
+
+# limit a,b
+
+https://blog.csdn.net/chihaihai/article/details/106256874
+
+
+
