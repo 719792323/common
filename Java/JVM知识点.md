@@ -362,3 +362,351 @@ System.out.println(aa==bb);// true
   **被判定为需要执行的对象将会被放在一个队列中进行第二次标记**，除非这个对象与引用链上的任何一个对象建立关联，否则就会被真的回收。
 
   
+
+### 引用类型分类
+
+* 怎么判断对象是什么类型的引用？
+
+引用分为强引用、软引用、弱引用、虚引用四种（引用强度逐渐减弱）
+
+![Java 引用类型总结](https://oss.javaguide.cn/github/javaguide/java/jvm/java-reference-type.png)
+
+**1．强引用（StrongReference没这个类）**
+
+以前我们使用的大部分引用实际上都是强引用，这是使用最普遍的引用。如果一个对象具有强引用，那就类似于**必不可少的生活用品**，**垃圾回收器绝不会回收它**。当内存空间不足，Java 虚拟机宁愿抛出 OutOfMemoryError 错误，使程序异常终止，也不会靠随意回收具有强引用的对象来解决内存不足问题。
+
+**2．软引用（SoftReference有这个类）**
+
+如果一个对象只具有软引用，那就类似于可有可无的生活用品。**如果内存空间足够，垃圾回收器就不会回收它，如果内存空间不足了，就会回收这些对象的内存**。只要垃圾回收器没有回收它，该对象就可以被程序使用。软引用可用来实现内存敏感的高速缓存。
+
+**3．弱引用（WeakReference有这个类）**
+
+如果一个对象只具有弱引用，那就类似于可有可无的生活用品。**弱引用与软引用的区别在于：只具有弱引用的对象拥有更短暂的生命周期**。在垃圾回收器线程扫描它所管辖的内存区域的过程中，**一旦发现了只具有弱引用的对象，不管当前内存空间足够与否，都会回收它的内存**。不过，由于垃圾回收器是一个优先级很低的线程， 因此不一定会很快发现那些只具有弱引用的对象。弱引用可以和一个引用队列（ReferenceQueue）联合使用，如果弱引用所引用的对象被垃圾回收，Java 虚拟机就会把这个弱引用加入到与之关联的引用队列中。
+
+**4．虚引用（PhantomReference有这个类）**
+
+"虚引用"顾名思义，就是形同虚设，与其他几种引用都不同，虚引用并不会决定对象的生命周期。**如果一个对象仅持有虚引用，那么它就和没有任何引用一样，在任何时候都可能被垃圾回收**。
+
+**虚引用主要用来跟踪对象被垃圾回收的活动**。
+
+**虚引用与软引用和弱引用的一个区别在于：** 虚引用必须和引用队列（ReferenceQueue）联合使用。当垃圾回收器准备回收一个对象时，如果发现它还有虚引用，就会在回收对象的内存之前，把这个虚引用加入到与之关联的引用队列中。程序可以通过判断引用队列中是否已经加入了虚引用，来了解被引用的对象是否将要被垃圾回收。程序如果发现某个虚引用已经被加入到引用队列，那么就可以在所引用的对象的内存被回收之前采取必要的行动。
+
+特别注意，在程序设计中一般很少使用弱引用与虚引用，使用软引用的情况较多，这是因为**软引用可以加速 JVM 对垃圾内存的回收速度，可以维护系统的运行安全，防止内存溢出（OutOfMemory）等问题的产生**。
+
+###  各类型引用的应用场景
+
+* 软引用
+
+  * 图片缓存
+    在 Android 中，我们经常需要加载大量的图片，如果使用强引用来缓存这些图片，很容易导致内存溢出。因此，一种更好的做法是使用软引用来缓存图片对象。当系统内存不足时，垃圾回收器会回收软引用所指向的图片对象，从而释放内存。
+
+  * 数据库缓存
+    在一些需要频繁读写的数据库应用中，我们可以使用软引用来缓存最近访问的数据。当内存不足时，垃圾回收器会回收软引用所指向的数据对象，从而释放内存。
+
+  * 线程池
+    在使用线程池的应用中，我们可以使用软引用来缓存一些比较大的对象，如线程池的任务队列。当内存不足时，垃圾回收器会回收软引用所指向的对象，从而释放内存。
+
+  如下使用软引用进行图片缓存的案例，使用了一个 `HashMap` 来保存软引用，实现了一个简单的图片缓存。当需要加载图片时，先从缓存中查找是否有软引用，如果有则直接获取软引用所指向的图片对象；否则从文件系统或网络加载图片，并将其放入缓存中。当内存不足时，垃圾回收器会回收软引用所指向的图片对象，从而释放内存
+
+  ```java
+  import java.lang.ref.SoftReference;
+  import java.util.HashMap;
+  import java.util.Map;
+   
+  public class ImageCache {
+      private Map<String, SoftReference<Image>> cache = new HashMap<>();
+   
+      public Image getImage(String key) {
+          SoftReference<Image> ref = cache.get(key);
+          Image image = null;
+          if (ref != null) {
+              image = ref.get();
+          }
+          if (image == null) {
+              image = loadImage(key);
+              cache.put(key, new SoftReference<>(image));
+          }
+          return image;
+      }
+   
+      private Image loadImage(String key) {
+          // 从文件系统或网络加载图片
+          return null;
+      }
+  }
+  ```
+
+* 弱引用
+
+  弱引用是一种特殊的引用类型，在使用时不会增加对象的引用计数，也不会阻止对象被垃圾回收。当对象被垃圾回收后，弱引用会自动失效，不再指向任何对象
+
+  * 弱引用可以用来实现缓存，当内存不足时，垃圾回收器会自动清理缓存中的对象。弱引用可以指向缓存中的对象，但不会阻止垃圾回收器回收它们。
+  * 对象池是一种常见的设计模式，用于避免频繁地创建和销毁对象。使用弱引用可以让对象池中的对象在不再使用时自动被回收，从而避免内存泄漏
+  * 在观察者模式中，观察者需要注册到主题对象上，并在主题对象状态变化时接收通知。使用弱引用可以避免观察者和主题对象之间形成循环引用，从而避免内存泄漏。
+
+  使用案例1：
+
+  ```java
+  public static void main(String[] args) {
+          Person person = new Person();
+          WeakReference<Person> ref = new WeakReference<>(person);//给对象添加一个弱引用
+          System.gc();//触发gc
+          System.out.println(ref.get());//因为有强引用，所以对象不会失效，可以从弱引用中拿对象
+          person = null;//删除对象强引用
+          System.gc();
+          System.out.println(ref.get());//发现弱引用已经失效
+          ref = new WeakReference<>(new Person());//创建一个只有弱引用的对象
+          System.out.println(ref.get());//gc频率较低，短时间不会被回收
+          System.gc();
+          System.out.println(ref.get());//null
+      }
+  ```
+
+  使用案例2：和引用队列搭配
+
+  ```java
+  public class ReferenceTest {
+   
+      private static ReferenceQueue<VeryBig> rq = new ReferenceQueue<VeryBig>();
+   
+      public static void checkQueue() {
+          Reference<? extends VeryBig> ref = null;
+          while ((ref = rq.poll()) != null) {
+              if (ref != null) {
+                  System.out.println("In queue: "    + ((VeryBigWeakReference) (ref)).id);
+              }
+          }
+      }
+   
+      public static void main(String args[]) {
+          int size = 3;
+          LinkedList<WeakReference<VeryBig>> weakList = new LinkedList<WeakReference<VeryBig>>();
+          for (int i = 0; i < size; i++) {
+              weakList.add(new VeryBigWeakReference(new VeryBig("Weak " + i), rq));
+              System.out.println("Just created weak: " + weakList.getLast());
+   
+          }
+   
+          System.gc(); 
+          try { // 下面休息几分钟，让上面的垃圾回收线程运行完成
+              Thread.currentThread().sleep(6000);
+          } catch (InterruptedException e) {
+              e.printStackTrace();
+          }
+          checkQueue();
+      }
+  }
+   
+  class VeryBig {
+      public String id;
+      // 占用空间,让线程进行回收
+      byte[] b = new byte[2 * 1024];
+   
+      public VeryBig(String id) {
+          this.id = id;
+      }
+   
+      protected void finalize() {
+          System.out.println("Finalizing VeryBig " + id);
+      }
+  }
+   
+  class VeryBigWeakReference extends WeakReference<VeryBig> {
+      public String id;
+   
+      public VeryBigWeakReference(VeryBig big, ReferenceQueue<VeryBig> rq) {
+          super(big, rq);
+          this.id = big.id;
+      }
+   
+      protected void finalize() {
+          System.out.println("Finalizing VeryBigWeakReference " + id);
+      }
+  }
+  ```
+
+  
+
+#### 什么是废弃常量
+
+运行时常量池主要回收的是废弃的常量。假如在字符串常量池中存在字符串 "abc"，如果当前没有任何 String 对象引用该字符串常量的话，就说明常量 "abc" 就是废弃常量，如果这时发生内存回收的话而且有必要的话，"abc" 就会被系统清理出常量池了。
+
+注：
+
+* JDK1.7 之前运行时常量池逻辑包含字符串常量池存放在方法区, 此时 hotspot 虚拟机对方法区的实现为永久代
+
+* JDK1.7 字符串常量池被从方法区拿到了堆中（因为堆gc更加频繁，而字符串常量通常需要被回收的更频繁）, 这里没有提到运行时常量池,也就是说字符串常量池被单独拿到堆,运行时常量池剩下的东西还在方法区, 也就是 hotspot 中的永久代 。
+
+* JDK1.8 hotspot 移除了永久代用元空间(Metaspace)取而代之, 这时候字符串常量池还在堆, 运行时常量池还在方法区, 只不过方法区的实现从永久代变成了元空间(Metaspace)
+
+#### 怎么判断一个类（class）已经无用
+
+方法区主要回收的是无用的类，那么如何判断一个类是无用的类的呢？
+
+判定一个常量是否是“废弃常量”比较简单，而要判定一个类是否是“无用的类”的条件则相对苛刻许多。类需要同时满足下面 3 个条件才能算是 **“无用的类”**：
+
+- 该类所有的实例都已经被回收，也就是 Java 堆中不存在该类的任何实例。
+- 加载该类的 `ClassLoader` 已经被回收。
+- 该类对应的 `java.lang.Class` 对象没有在任何地方被引用，无法在任何地方通过反射访问该类的方法。（Class对象）
+
+虚拟机可以对满足上述 3 个条件的无用类进行回收，这里说的仅仅是“可以”，而并不是和对象一样不使用了就会必然被回收。
+
+#### 内存回收算法
+
+* 标记-清除算法
+
+标记-清除（Mark-and-Sweep）算法分为“标记（Mark）”和“清除（Sweep）”阶段：首先标记出所有不需要回收的对象，在标记完成后统一回收掉所有没有被标记的对象。
+
+它是最基础的收集算法，后续的算法都是对其不足进行改进得到。这种垃圾收集算法会带来两个明显的问题：
+
+1. **效率问题**：标记和清除两个过程效率都不高。
+2. **空间问题**：标记清除后会产生大量不连续的内存碎片。
+
+![标记-清除算法](https://oss.javaguide.cn/github/javaguide/java/jvm/mark-and-sweep-garbage-collection-algorithm.png)
+
+* 复制算法（适合青年代）
+
+  为了解决标记-清除算法的效率和内存碎片问题，复制（Copying）收集算法出现了。它可以将内存分为大小相同的两块，每次使用其中的一块。当这一块的内存使用完后，就将还存活的对象复制到另一块去，然后再把使用的空间一次清理掉。这样就使每次的内存回收都是对内存区间的一半进行回收。
+
+  ![复制算法](https://oss.javaguide.cn/github/javaguide/java/jvm/copying-garbage-collection-algorithm.png)复制算法
+
+  虽然改进了标记-清除算法，但依然存在下面这些问题：
+
+  - **可用内存变小**：可用内存缩小为原来的一半。
+  - **不适合老年代**：如果存活对象数量比较大，复制性能会变得很差。
+
+* 标记-整理法（适合老年代）
+
+  标记-整理（Mark-and-Compact）算法是根据老年代的特点提出的一种标记算法，标记过程仍然与“标记-清除”算法一样，但后续步骤不是直接对可回收对象回收，而是让所有存活的对象向一端移动，然后直接清理掉端边界以外的内存。
+
+  ![标记-整理算法](https://oss.javaguide.cn/github/javaguide/java/jvm/mark-and-compact-garbage-collection-algorithm.png)
+
+  由于多了整理这一步，因此效率也不高，**适合老年代这种垃圾回收频率不是很高的场景。**
+
+* 分代收集算法（针对不同划分区使用不同算法）
+
+  当前虚拟机的垃圾收集都采用分代收集算法，这种算法没有什么新的思想，只是根据对象存活周期的不同将内存分为几块。一般将 Java 堆分为新生代和老年代，这样我们就可以根据各个年代的特点选择合适的垃圾收集算法。
+
+  比如在新生代中，每次收集都会有大量对象死去，所以可以选择”标记-复制“算法，只需要付出少量对象的复制成本就可以完成每次垃圾收集。而老年代的对象存活几率是比较高的，而且没有额外的空间对它进行分配担保，所以我们必须选择“标记-清除”或“标记-整理”算法进行垃圾收集。
+
+  **延伸面试问题：** HotSpot 为什么要分为新生代和老年代？
+
+  根据上面的对分代收集算法的介绍回答。
+
+#### 垃圾收集器分类
+
+JDK 默认垃圾收集器（使用 `java -XX:+PrintCommandLineFlags -version` 命令查看）：
+
+- JDK 8：Parallel Scavenge（新生代）+ Parallel Old（老年代）
+- **JDK 9 ~ JDK20: G1**
+
+##### 具体一些垃圾分类器
+
+* serial（新生代收集器）
+
+  一个单线程收集器，它在进行垃圾收集工作的时候必须暂停其他所有的工作线程（ **"Stop The World"** ），直到它收集结束。**在新生代采用标记-复制算法，老年代采用标记-整理算法**。
+
+  ![Serial 收集器](https://oss.javaguide.cn/github/javaguide/java/jvm/serial-garbage-collector.png)
+
+  Serial 收集器由于没有线程交互的开销，自然可以获得很高的单线程收集效率。Serial 收集器对于运行在 Client 模式下的虚拟机来说是个不错的选择
+
+* ParNew（新生代收集器）
+
+  **ParNew 收集器其实就是 Serial 收集器的多线程版本，除了使用多线程进行垃圾收集外，其余行为（控制参数、收集算法、回收策略等等）和 Serial 收集器完全一样**。
+
+  它是许多运行在 Server 模式下的虚拟机的首要选择，除了 Serial 收集器外，只有它能与 CMS 收集器（真正意义上的并发收集器，后面会介绍到）配合工作。
+
+* Parallel Scavenge
+
+  Parallel Scavenge 收集器也是新标记-复制，老标记整理算法的多线程收集器，它看上去几乎和 ParNew 都一样。 
+
+  
+
+  ```bash
+  -XX:+UseParallelGC
+  
+      使用 Parallel 收集器+ 老年代串行
+  
+  -XX:+UseParallelOldGC
+  
+      使用 Parallel 收集器+ 老年代并行
+  ```
+
+  **Parallel Scavenge 收集器关注点是吞吐量**（高效率的利用 CPU）。**CMS 等垃圾收集器的关注点更多的是用户线程的停顿时间（提高用户体验）**。所谓吞吐量就是 CPU 中用于运行用户代码的时间与 CPU 总消耗时间的比值。 Parallel Scavenge 收集器提供了很多参数供用户找到最合适的停顿时间或最大吞吐量，如果对于收集器运作不太了解，手工优化存在困难的时候，使用 Parallel Scavenge 收集器配合自适应调节策略，把内存管理优化交给虚拟机去完成也是一个不错的选择。
+
+* serial old（老年代收集器）
+
+  **Serial 收集器的老年代版本**，它同样是一个单线程收集器。它主要有两大用途：一种用途是在 JDK1.5 以及以前的版本中与 Parallel Scavenge 收集器搭配使用，另一种用途是作为 CMS 收集器的后备方案。
+
+  ![Serial 收集器](https://oss.javaguide.cn/github/javaguide/java/jvm/serial-garbage-collector.png)
+
+* parallel old（老年代收集器）
+
+  **Parallel Scavenge 收集器的老年代版本**。使用多线程和“标记-整理”算法。在注重吞吐量以及 CPU 资源的场合，都可以优先考虑 Parallel Scavenge 收集器和 Parallel Old 收集器。
+
+  ![Parallel Old收集器运行示意图](https://oss.javaguide.cn/github/javaguide/java/jvm/parallel-scavenge-garbage-collector.png)
+
+* cms
+
+  **CMS（Concurrent Mark Sweep）收集器是一种以获取最短回收停顿时间为目标的收集器。它非常符合在注重用户体验的应用上使用。**
+
+  **CMS（Concurrent Mark Sweep）收集器是 HotSpot 虚拟机第一款真正意义上的并发收集器，它第一次实现了让垃圾收集线程与用户线程（基本上）同时工作。**
+
+  从名字中的**Mark Sweep**这两个词可以看出，CMS 收集器是一种 **“标记-清除”算法**实现的，它的运作过程相比于前面几种垃圾收集器来说更加复杂一些。整个过程分为四个步骤：
+
+  - **初始标记：** 暂停所有的其他线程，并记录下直接与 root 相连的对象，速度很快 ；
+  - **并发标记：** 同时开启 GC 和用户线程，用一个闭包结构去记录可达对象。但在这个阶段结束，这个闭包结构并不能保证包含当前所有的可达对象。因为用户线程可能会不断的更新引用域，所以 GC 线程无法保证可达性分析的实时性。所以这个算法里会跟踪记录这些发生引用更新的地方。
+  - **重新标记：** 重新标记阶段就是为了修正并发标记期间因为用户程序继续运行而导致标记产生变动的那一部分对象的标记记录，这个阶段的停顿时间一般会比初始标记阶段的时间稍长，远远比并发标记阶段时间短
+  - **并发清除：** 开启用户线程，同时 GC 线程开始对未标记的区域做清扫。
+
+  ![CMS 收集器](https://oss.javaguide.cn/github/javaguide/java/jvm/cms-garbage-collector.png)
+
+  从它的名字就可以看出它是一款优秀的垃圾收集器，主要优点：**并发收集、低停顿**。但是它有下面三个明显的缺点：
+
+  - **对 CPU 资源敏感；**
+  - **无法处理浮动垃圾；**
+  - **它使用的回收算法-“标记-清除”算法会导致收集结束时会有大量空间碎片产生。**
+
+* g1
+
+  **G1 (Garbage-First) 是一款面向服务器的垃圾收集器,主要针对配备多颗处理器及大容量内存的机器. 以极高概率满足 GC 停顿时间要求的同时,还具备高吞吐量性能特征.**
+
+  被视为 JDK1.7 中 HotSpot 虚拟机的一个重要进化特征。它具备以下特点：
+
+  - **并行与并发**：G1 能充分利用 CPU、多核环境下的硬件优势，使用多个 CPU（CPU 或者 CPU 核心）来缩短 Stop-The-World 停顿时间。部分其他收集器原本需要停顿 Java 线程执行的 GC 动作，G1 收集器仍然可以通过并发的方式让 java 程序继续执行。
+  - **分代收集**：虽然 G1 可以不需要其他收集器配合就能独立管理整个 GC 堆，但是还是保留了分代的概念。
+  - **空间整合**：与 CMS 的“标记-清除”算法不同，G1 从整体来看是基于“标记-整理”算法实现的收集器；从局部上来看是基于“标记-复制”算法实现的。
+  - **可预测的停顿**：这是 G1 相对于 CMS 的另一个大优势，降低停顿时间是 G1 和 CMS 共同的关注点，但 G1 除了追求低停顿外，还能建立可预测的停顿时间模型，能让使用者明确指定在一个长度为 M 毫秒的时间片段内，消耗在垃圾收集上的时间不得超过 N 毫秒。
+
+  G1 收集器的运作大致分为以下几个步骤：
+
+  - **初始标记**
+  - **并发标记**
+  - **最终标记**
+  - **筛选回收**
+
+  ![G1 收集器](https://oss.javaguide.cn/github/javaguide/java/jvm/g1-garbage-collector.png)G1 收集器
+
+  **G1 收集器在后台维护了一个优先列表，每次根据允许的收集时间，优先选择回收价值最大的 Region(这也就是它的名字 Garbage-First 的由来)** 。这种使用 Region 划分内存空间以及有优先级的区域回收方式，保证了 G1 收集器在有限时间内可以尽可能高的收集效率（把内存化整为零）。
+
+  **从 JDK9 开始，G1 垃圾收集器成为了默认的垃圾收集器。**
+
+* ZGC
+
+  与 CMS 中的 ParNew 和 G1 类似，ZGC 也采用标记-复制算法，不过 ZGC 对该算法做了重大改进。
+
+  在 ZGC 中出现 Stop The World 的情况会更少！
+
+  Java11 的时候 ，ZGC 还在试验阶段。经过多个版本的迭代，不断的完善和修复问题，ZGC 在 Java 15 已经可以正式使用了！
+
+  不过，默认的垃圾回收器依然是 G1。你可以通过下面的参数启动 ZGC：
+
+  
+
+  ```bash
+  java -XX:+UseZGC className
+  ```
+
+  关于 ZGC 收集器的详细介绍推荐阅读美团技术团队的 [新一代垃圾回收器 ZGC 的探索与实践open in new window](https://tech.meituan.com/2020/08/06/new-zgc-practice-in-meituan.html) 这篇文章
+
+  
