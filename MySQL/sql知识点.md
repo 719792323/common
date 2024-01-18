@@ -1,3 +1,7 @@
+# sql执行顺序
+
+![[外链图片转存失败,源站可能有防盗链机制,建议将图片保存下来直接上传(img-sSnecEa8-1628578703350)(C:\Users\hbwhx\Desktop\学习\窗口函数\Windows Functions.assets\image-20210713143908533.png)]](https://img-blog.csdnimg.cn/796f5d52a21e488bb6f644758c7afb5c.png)
+
 # 关键字
 
 * join
@@ -158,9 +162,48 @@
 
   > count(*)、count(1)、count(column)区别是什么
 
-* 
+  **注意：count如果不接窗口函数使用会只返回一条数据**
 
 # 函数
 
 * rank
+
 * min/max/avg
+
+* ifnull(column,default)
+
+  如过column对应的为null，则在本次查询使用default作为替换值
+
+* datediff(date1,date2)
+
+  返回date2-date1相隔的天数，实际计算两个date类型相差天数时要用datediff(date2,date1)，而不是用date2-date1，因为date2-date1不是按天的精度来算，即如果两个date之差小于<24个小时，那么结果就不是1
+  
+* round(column,n)
+
+  对column进行四舍五入保留到小数点后n位
+  
+* ceil
+
+  向上取整
+
+* floor
+
+  向下取整
+
+# 正则表达式
+
+正则表达式语法
+
+```sql
+SELECT column1, column2, ...
+FROM table_name
+WHERE column_name REGEXP 'pattern';
+```
+
+* 注意：如使用\s（空格）时，在'pattern'中要写成'\\\s'，进行转义
+
+
+
+# 窗口函数
+
+![[外链图片转存失败,源站可能有防盗链机制,建议将图片保存下来直接上传(img-3ut14zoW-1628578703352)(C:\Users\hbwhx\Desktop\学习\窗口函数\Windows Functions.assets\image-20210713144138756.png)]](https://img-blog.csdnimg.cn/1456767a7ac84c0fbfc9e69d1436af92.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3dlaXhpbl80NDg1MjA2Nw==,size_16,color_FFFFFF,t_70)
