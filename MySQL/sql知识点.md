@@ -150,6 +150,8 @@
 
 * union
 
+* union all
+
 * count
 
   * count（*） 、count（1）：这两个的使用方法和结果是相同的。表示返回所有的行，经常使用在没有where条件的语句中，速度较快。

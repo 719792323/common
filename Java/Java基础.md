@@ -221,3 +221,535 @@ System.out.println(l + 1 == Long.MIN_VALUE); // true
 
 ------
 
+### 成员变量与局部变量的区别？
+
+* 成员变量可分为类变量和实例变量它们的区别是什么
+
+![成员变量 vs 局部变量](https://oss.javaguide.cn/github/javaguide/java/basis/member-var-vs-local-var.png)
+
+- **语法形式**：从语法形式上看，**成员变量是属于类的，而局部变量是在代码块或方法中定义的变量或是方法的参数**；成员变量可以被 `public`,`private`,`static` 等修饰符所修饰，而局部变量不能被访问控制修饰符及 `static` 所修饰；但是，成员变量和局部变量都能被 `final` 所修饰。
+- **存储方式**：从变量在内存中的存储方式来看，**如果成员变量是使用 `static` 修饰的，那么这个成员变量是属于类的，如果没有使用 `static` 修饰，这个成员变量是属于实例的**。而对象存在于堆内存，局部变量则存在于栈内存。
+- **生存时间**：从变量在内存中的生存时间上看，成员变量是对象的一部分，它随着对象的创建而存在，而局部变量随着方法的调用而自动生成，随着方法的调用结束而消亡。
+- **默认值**：从变量是否有默认值来看，**成员变量如果没有被赋初始值，则会自动以类型的默认值而赋值**（一种情况例外:被 `final` 修饰的成员变量也必须显式地赋值），**而局部变量则不会自动赋值**。
+
+#### 静态变量作用
+
+静态变量也就是被 `static` 关键字修饰的变量。**它可以被类的所有实例共享**，无论一个类创建了多少个对象，它们都共享同一份静态变量。也就是说，**静态变量只会被分配一次内存**，即使创建多个对象，这样可以节省内存，**静态变量是通过类名来访问的**。
+
+
+
+#### **字符**常量和**字符串**常量区别
+
+**形式** : 字符常量是单引号引起的一个字符，字符串常量是双引号引起的 0 个或若干个字符。
+
+**含义** : 字符常量相当于一个整型值( ASCII 值),可以参加表达式运算; 字符串常量代表一个地址值(该字符串在内存中存放位置)。
+
+**占内存大小**：字符常量只占 2 个字节; 字符串常量占若干个字节。
+
+
+
+#### 静态方法为什么不能调用非静态成员?
+
+这个需要结合 JVM 的相关知识，主要原因如下：
+
+1. 静态方法是属于类的，在类加载的时候就会分配内存，可以通过类名直接访问。而非静态成员属于实例对象，只有在对象实例化之后才存在，需要通过类的实例对象去访问。
+2. 在类的非静态成员不存在的时候静态方法就已经存在了，此时调用在内存中还不存在的非静态成员，属于非法操作。
+
+### 静态方法和实例方法有何不同？
+
+**1、调用方式**
+
+在外部调用静态方法时，可以使用 `类名.方法名` 的方式，也可以使用 `对象.方法名` 的方式，而实例方法只有后面这种方式。也就是说，**调用静态方法可以无需创建对象** 。
+
+不过，需要注意的是一般不建议使用 `对象.方法名` 的方式来调用静态方法。这种方式非常容易造成混淆，静态方法不属于类的某个对象而是属于这个类。
+
+因此，一般建议使用 `类名.方法名` 的方式来调用静态方法。
+
+**2、访问类成员是否存在限制**
+
+静态方法在访问本类的成员时，只允许访问静态成员（即静态成员变量和静态方法），不允许访问实例成员（即实例成员变量和实例方法），而实例方法不存在这个限制。
+
+
+
+#### 重载和重写有区别
+
+* 重载
+
+  发生在**同一个类中**（**或者父类和子类之间**），**方法名必须`相同`**，**参数类型不同**、**个数不同、顺序不同**，**方法返回值和访问修饰符`可以不同`**（如果方法的返回类型是 void 和基本数据类型，则返回值重写时不可修改）
+
+* 重写
+
+  重写发生在运行期，**是子类对父类的允许访问的方法的实现过程进行重新编写**。
+
+  1. **方法名、参数列表必须`相同`**，**子类方法返回值类型应比父类方法返回值类型`更小或相等`**，**抛出的异常范围`小于等于父类`****，**`访问修饰`符范围`大于等于`父类**。
+  2. 如果父类方法访问修饰符为 **`private/final/static`** 则子类就不能重写该方法，但是被 `static` 修饰的方法能够被再次声明。
+  3. 构造方法无法被重写
+
+
+
+综上：**重写就是子类对父类方法的重新改造，外部样子不能改变，内部逻辑可以改变。**
+
+| 区别点     | 重载方法 | 重写方法                                                     |
+| :--------- | :------- | :----------------------------------------------------------- |
+| 发生范围   | 同一个类 | 子类                                                         |
+| 参数列表   | 必须修改 | 一定不能修改                                                 |
+| 返回类型   | 可修改   | 子类方法返回值类型应比父类方法返回值类型更小或相等           |
+| 异常       | 可修改   | 子类方法声明抛出的异常类应比父类方法声明抛出的异常类更小或相等； |
+| 访问修饰符 | 可修改   | 一定不能做更严格的限制（可以降低限制）                       |
+| 发生阶段   | 编译期   | 运行期                                                       |
+
+#### 可变长参数
+
+从 Java5 开始，Java 支持定义可变长参数，所谓可变长参数就是允许在调用方法时传入不定长度的参数。可变参数只能作为函数的最后一个参数。
+
+**对可变参数的方法进行重载时，会优先匹配固定参数对应的方法**
+
+```java
+public class VariableLengthArgument {
+
+    public static void printVariable(String... args) {
+        for (String s : args) {
+            System.out.println(s);
+        }
+    }
+
+    public static void printVariable(String arg1, String arg2) {
+        System.out.println(arg1 + arg2);
+    }
+
+    public static void main(String[] args) {
+        printVariable("a", "b");//ab
+        printVariable("a", "b", "c", "d");//调用可变长方法
+    }
+}
+```
+
+
+
+#### 创建一个对象用什么运算符?对象实体与对象引用有何不同?
+
+new 运算符，new 创建对象实例（对象实例在堆内存中），对象引用（指针）指向对象实例（对象引用存放在栈内存中）。
+
+- 一个对象引用可以指向 0 个或 1 个对象
+- 一个对象可以有 n 个引用指向它
+
+#### 对象的相等和引用相等的区别
+
+- 对象的相等一般比较的是内存中存放的内容是否相等。
+- 引用相等一般比较的是他们指向的内存地址是否相等。
+
+````java
+String str1 = "hello";
+String str2 = new String("hello");
+String str3 = "hello";
+// 使用 == 比较字符串的引用相等（比较对象地址是否相同，因为hello放在字符串常量池了所以str1和str3指向的对象地址相同）
+System.out.println(str1 == str2);//false
+System.out.println(str1 == str3);//true
+// 使用 equals 方法比较字符串的相等
+System.out.println(str1.equals(str2));//true
+System.out.println(str1.equals(str3));//true
+
+
+````
+
+
+
+#### 构造方法有哪些特点？是否可被 override?
+
+构造方法特点如下：
+
+- 名字与类名相同。
+- 没有返回值，但不能用 void 声明构造函数
+- 生成类的对象时自动执行，无需调用
+
+构造方法不能被 override（重写）,但是可以 overload（重载）,所以你可以看到一个类中有多个构造函数的情况
+
+
+
+#### 继承特点
+
+* 子类拥有父类对象所有的属性和方法（包括私有属性和私有方法），但是父类中的私有属性和方法子类是无法访问，**只是拥有**。
+
+* 子类可以拥有自己属性和方法，即子类可以对父类进行扩展。
+
+* 子类可以用自己的方式实现父类的方法。
+
+#### 多态特点
+
+- 对象类型和引用类型之间具有继承（类）/实现（接口）的关系；
+- 引用类型变量发出的方法调用的到底是哪个类中的方法，必须在程序运行期间才能确定；
+- 多态不能调用“只在子类存在但在父类不存在”的方法；
+- 如果子类重写了父类的方法，真正执行的是子类覆盖的方法，如果子类没有覆盖父类的方法，执行的是父类的方法
+
+
+
+#### 接口与抽象类的异同
+
+**共同点**：
+
+- 都不能被实例化。
+- 都可以包含抽象方法。（接口能有abstract修饰方法？答案：可以，但是没必要使用）
+- 都可以有默认实现的方法（Java 8 可以用 `default` 关键字在接口中定义默认方法）。
+
+**区别**：
+
+- **接口主要用于对类的行为进行约束**，你实现了某个接口就具有了对应的行为。**抽象类主要用于代码复用**，强调的是所属关系。
+
+- 一个类只能继承一个类，但是可以实现多个接口。
+
+- **接口中的成员变量只能是 `public static final` 类型的**，不能被修改且必须有初始值，**而抽象类的成员变量默认 default，可在子类中被重新定义，也可被重新赋值**。
+
+  注：在接口定义了某属性，在其子类中也能定义相同名称的属性，在子类定义相同属性后，如果还需要使用接口中同名属性需要用**接口名.属性**来进行调用
+
+
+
+#### 深拷贝与浅拷贝
+
+**浅拷贝**：浅拷贝会在堆上创建一个新的对象（区别于引用拷贝的一点），不过，如果原对象内部的属性是引用类型的话，浅拷贝会直接复制内部对象的引用地址，也就是说拷贝对象和原对象共用同一个内部对象。
+
+**深拷贝**：深拷贝会完全复制整个对象，包括这个对象所包含的内部对象。
+
+![浅拷贝、深拷贝、引用拷贝示意图](https://oss.javaguide.cn/github/javaguide/java/basis/shallow&deep-copy.png)
+
+#### == 和 equals() 的区别
+
+- 对于基本数据类型来说，`==` 比较的是值。
+- 对于引用数据类型来说，`==` 比较的是对象的内存地址。
+
+**`equals()`** 不能用于判断**基本数据类型**的变量（因为基本数据类型不是对象），只能用来判断两个对象是否相等。`equals()`方法存在于`Object`类中，而`Object`类是所有类的直接或间接父类，因此所有的类都有`equals()`方法。
+
+`equals()` 方法存在两种使用情况：
+
+- **类没有重写 `equals()`方法**：通过`equals()`比较该类的两个对象时，等价于通过“==”比较这两个对象，使用的默认是 `Object`类`equals()`方法。
+- **类重写了 `equals()`方法**：一般我们都重写 `equals()`方法来比较两个对象中的属性是否相等；若它们的属性相等，则返回 true(即，认为这两个对象相等)。
+
+#### hashcode作用
+
+* hashcode相同是否表示两个对象相同（不是）
+* 为什么要提供equals与hashcode两个比较相同的方法（hashcode用于加速比较，equals确保hashcode重复情况下能比较对象是否相等）
+
+`hashCode()` 的作用是获取哈希码（`int` 整数），也称为散列码。这个哈希码的作用是确定该对象在哈希表中的索引位置，hash类对象如Map或者Set使用hashcode与equals来判断容器中是否存在相同元素。
+
+>把对象加入 `HashSet` 时，`HashSet` 会先计算对象的 `hashCode` 值来判断对象加入的位置，同时也会与其他已经加入的对象的 `hashCode` 值作比较，如果没有相符的 `hashCode`，`HashSet` 会假设对象没有重复出现。但是如果发现有相同 `hashCode` 值的对象，这时会调用 `equals()` 方法来检查 `hashCode` 相等的对象是否真的相同。如果两者相同，`HashSet` 就不会让其加入操作成功。如果不同的话，就会重新散列到其他位置。这样我们就大大减少了 `equals` 的次数，相应就大大提高了执行速度。
+
+* 为什么equals与hashcode要同时重写
+
+  因为两个相等的对象的 `hashCode` 值必须是相等。也就是说如果 `equals` 方法判断两个对象是相等的，那这两个对象的 `hashCode` 值也要相等。
+
+  如果重写 `equals()` 时没有重写 `hashCode()` 方法的话就可能会导致 `equals` 方法判断是相等的两个对象，`hashCode` 值却不相等。
+
+  > 重写 `equals()` 时没有重写 `hashCode()` 方法的话，使用 `HashMap` 可能会出现问题
+
+
+
+####  String、StringBuffer、StringBuilder 的区别
+
+* 能否修改
+
+  `String` **是不可变的**（后面会详细分析原因）。
+
+  `StringBuilder` 与 `StringBuffer` 都**继承自 `AbstractStringBuilder` 类**，在 `AbstractStringBuilder` 中也是使用字符数组保存字符串，不过没有使用 `final` 和 `private` 关键字修饰，最关键的是这个 `AbstractStringBuilder` 类还提供了很多修改字符串的方法比如 `append` 方法。
+
+* 线程安全性
+  * `String` 中的对象是不可变的，也就可以理解为常量，**线程安全**。
+  * `StringBuffer` 对方法加了同步锁或者对调用的方法加了同步锁，所以是**线程安全**的。
+  * `StringBuilder` 并没有对方法进行加同步锁，所以是**非线程安全的**。
+* 性能
+  * 每次对 `String` 类型进行改变的时候，都会生成一个新的 `String` 对象，然后将指针指向新的 `String` 对象，性能最差。
+  * `StringBuffer` 每次都会对 `StringBuffer` 对象本身进行操作，而不是生成新的对象并改变对象引用。相同情况下使用 `StringBuilder` 相比使用 `StringBuffer` 仅能获得 10%~15% 左右的性能提升，但却要冒多线程不安全的风险。
+* 使用建议
+  1. 操作少量的数据: 适用 `String`
+  2. 单线程操作字符串缓冲区下操作大量数据: 适用 `StringBuilder`
+  3. 多线程操作字符串缓冲区下操作大量数据: 适用 `StringBuffer`
+
+#### String为什么是不可变的
+
+* String这个类被final修饰
+
+  `String` 类被 `final` 修饰导致其不能被继承，进而避免了子类破坏 `String` 不可变，因为final定义的类不能被继承
+
+*  String类中保存字符的char数组是private和final共同修饰的
+
+  保存字符串的数组被 `final` 修饰且为私有的，并且`String` 类没有提供/暴露修改这个字符串的方法
+
+  ```java
+  public final class String implements java.io.Serializable,Comparable<String>, CharSequence {
+      // @Stable 注解表示变量最多被修改一次，称为“稳定的”。
+      @Stable
+      private final byte[] value;
+  }
+  ```
+
+#### 字符串常量池作用
+
+为了提升性能和减少内存消耗针对字符串（String 类）专门开辟的一块区域，主要目的是为了避免字符串的重复创建。
+
+####  String s1 = new String("abc");这句话创建了几个字符串对象
+
+其实这个语句要拆分成"abc"和new String，"abc"会被编译器进行优化放在字符串常量池中。故有如下两种可能
+
+* "abc"是代码段中第一次出现，那么将会创建两个对象，即"abc"放在字符串常量池中，new String放在堆中。
+* "abc"在上文以及存在过，那么只创建一个对象，即new String这个对象
+
+回答的依据可以用字符串常量池中是否存在对应的字符串。
+
+#### String.intern 方法有什么作用
+
+`String.intern()` 是一个 native（本地）方法，其作用是将指定的字符串对象的引用保存在字符串常量池中，可以简单分为两种情况：
+
+- 如果字符串常量池中保存了对应的字符串对象的引用，就直接返回该引用。
+- 如果字符串常量池中没有保存了对应的字符串对象的引用，那就在常量池中创建一个指向该字符串对象的引用并返回。
+
+```java
+// 在堆中创建字符串对象”Java“
+// 将字符串对象”Java“的引用保存在字符串常量池中
+String s1 = "Java";
+// 直接返回字符串常量池中字符串对象”Java“对应的引用
+String s2 = s1.intern();
+// 会在堆中在单独创建一个字符串对象
+String s3 = new String("Java");
+// 直接返回字符串常量池中字符串对象”Java“对应的引用
+String s4 = s3.intern();
+// s1 和 s2 指向的是堆中的同一个对象
+System.out.println(s1 == s2); // true
+// s3 和 s4 指向的是堆中不同的对象
+System.out.println(s3 == s4); // false
+// s1 和 s4 指向的是堆中的同一个对象
+System.out.println(s1 == s4); //true
+```
+
+#### String进行+运算时可能的情况
+
+注意：str3和str4并不是指向同一个对象，javac编译优化只优化了str3，str4相当于对象相加不是常量，所以创建了新对象
+
+```java
+String str1 = "str";
+String str2 = "ing";
+String str3 = "str" + "ing";
+String str4 = str1 + str2;
+String str5 = "string";
+System.out.println(str3 == str4);//false
+System.out.println(str3 == str5);//true
+System.out.println(str4 == str5);//false
+```
+
+**对于编译期可以确定值的字符串，也就是常量字符串 ，jvm 会将其存入字符串常量池。并且，字符串常量拼接得到的字符串常量在编译阶段就已经被存放字符串常量池，这个得益于编译器的优化。**
+
+* 基本数据类型( `byte`、`boolean`、`short`、`char`、`int`、`float`、`long`、`double`)以及字符串常量。
+
+* **`final` 修饰的基本数据类型和字符串变量(且编译时已经被赋值了)**
+
+  ```java
+  final String str1 = "str";
+  final String str2 = "ing";
+  // 下面两个表达式其实是等价的
+  String c = "str" + "ing";// 常量池中的对象
+  String d = str1 + str2; // 常量池中的对象
+  System.out.println(c == d);// true
+  ```
+
+  被 `final` 关键字修饰之后的 `String` 会被编译器当做常量来处理，编译器在程序编译期就可以确定它的值，其效果就相当于访问常量。
+
+  如果 ，编译器在运行时才能知道其确切值的话，就无法对其优化
+
+  ```java
+  final String str1 = "str";
+  final String str2 = getStr();
+  String c = "str" + "ing";// 常量池中的对象
+  String d = str1 + str2; // 在堆上创建的新的对象
+  System.out.println(c == d);// false
+  public static String getStr() {
+        return "ing";
+  }
+  ```
+
+* 字符串通过 “+”拼接得到的字符串、基本数据类型之间算数运算（加减乘除）、基本数据类型的位运算（<<、>>、>>> ）
+
+#### 异常体系结构
+
+![Java 异常类层次结构图](https://oss.javaguide.cn/github/javaguide/java/basis/types-of-exceptions-in-java.png)
+
+* Exception与Error
+
+  * **`Exception`** :程序本身可以处理的异常，可以通过 `catch` 来进行捕获。`Exception` 又可以分为 Checked Exception (受检查异常，必须处理) 和 Unchecked Exception (不受检查异常，可以不处理)。
+
+  * **`Error`**：`Error` 属于程序无法处理的错误 ，不建议通过`catch`捕获 。例如 Java 虚拟机运行错误（`Virtual MachineError`）、虚拟机内存不够错误(`OutOfMemoryError`)、类定义错误（`NoClassDefFoundError`）等 。这些异常发生时，Java 虚拟机（JVM）一般会选择线程终止。
+
+* check与uncheck
+  * **Checked Exception** 即 受检查异常 ，Java 代码在编译过程中，如果受检查异常没有被 `catch`或者`throws` 关键字处理的话，就**没办法通过编译**
+  * **Unchecked Exception** 即 **不受检查异常** ，Java 代码在编译过程中 ，我们即使不处理不受检查异常也可以正常通过编译。
+
+#### Throwable常用方法
+
+- `String getMessage()`: 返回异常发生时的简要描述
+- `String toString()`: 返回异常发生时的详细信息
+- **`String getLocalizedMessage()`**: 返回异常对象的本地化信息。使用 `Throwable` 的子类覆盖这个方法，可以生成本地化信息。如果子类没有覆盖该方法，则该方法返回的信息与 `getMessage()`返回的结果相同
+- `void printStackTrace()`: 在控制台上打印 `Throwable` 对象封装的异常信息
+
+#### try-catch-finally结构
+
+- `try`块：用于捕获异常。其后可接零个或多个 `catch` 块，**如果没有 `catch` 块，则必须跟一个 `finally` 块。**
+- `catch`块：用于处理 try 捕获到的异常。
+- `finally` 块：无论是否捕获或处理异常，`finally` 块里的语句都会被执行。当在 `try` 块或 `catch` 块中遇到 `return` 语句时，`finally` 语句块将在方法返回之前被执行。
+
+**注意：不要在 finally 语句块中使用 return!** 当 try 语句和 finally 语句中都有 return 语句时，try 语句块中的 return 语句会被忽略。这是因为 try 语句中的 return 返回值会先被暂存在一个本地变量中，当执行到 finally 语句中的 return 之后，这个本地变量的值就变为了 finally 语句中的 return 返回值。
+
+#### finally语句是否一定会被指向
+
+* finally 之前虚拟机被终止运行的话，finally 中的代码就不会被执行
+
+  ```java
+  try {
+      System.out.println("Try to do something");
+      throw new RuntimeException("RuntimeException");
+  } catch (Exception e) {
+      System.out.println("Catch Exception -> " + e.getMessage());
+      // 终止当前正在运行的Java虚拟机
+      System.exit(1);
+  } finally {
+      System.out.println("Finally");
+  }
+  
+  ```
+
+* 程序所在的线程死亡或关闭cpu也会导致finally不被执行
+
+#### 异常使用规范
+
+- 不要把异常定义为静态变量，因为这样会导致异常栈信息错乱。每次手动抛出异常，我们都需要手动 new 一个异常对象抛出。
+- 抛出的异常信息一定要有意义。
+- 建议抛出更加**具体的异常**比如字符串转换为数字格式错误的时候应该抛出`NumberFormatException`而不是其父类`IllegalArgumentException`。
+- **使用日志打印异常之后就不要再抛出异常了（两者不要同时存在一段代码逻辑中）**。
+
+#### 泛型的作用与类型
+
+**Java 泛型（Generics）** 是 JDK 5 中引入的一个新特性。使用泛型参数，**可以增强代码的可读性 稳定性 可复用性。**
+
+泛型一般有三种使用方式:**泛型类**、**泛型接口**、**泛型方法**。
+
+
+
+#### 获取Class对象的方式
+
+**1. 知道具体类的情况下可以使用：**
+
+```java
+Class alunbarClass = TargetObject.class;
+```
+
+但是我们一般是不知道具体类的，基本都是通过遍历包下面的类来获取 Class 对象，通过此方式获取 Class 对象不会进行初始化
+
+**2. 通过 `Class.forName()`传入类的全路径获取：**
+
+```java
+Class alunbarClass1 = Class.forName("cn.javaguide.TargetObject");
+```
+
+**3. 通过对象实例`instance.getClass()`获取：**
+
+```java
+TargetObject o = new TargetObject();
+Class alunbarClass2 = o.getClass();
+```
+
+**4. 通过类加载器`xxxClassLoader.loadClass()`传入类路径获取:**
+
+```java
+ClassLoader.getSystemClassLoader().loadClass("cn.javaguide.TargetObject");
+```
+
+通过类加载器获取 Class 对象不会进行初始化，意味着不进行包括初始化等一系列步骤，静态代码块和静态对象不会得到执行
+
+#### 注解的作用
+
+`Annotation` （注解） 是 Java5 开始引入的新特性，可以看作是一种特殊的注释，**主要用于修饰类、方法或者变量**，提供某些信息供程序在编译或者运行时使用。
+
+#### 序列化与反序列化概念
+
+- **序列化**：将数据结构或对象转换成二进制字节流的过程
+- **反序列化**：将在序列化过程中所生成的二进制字节流转换成数据结构或者对象的过程
+
+* 常见的序列化与反序列需求
+  * 对象在进行**网络传输**（比如远程方法调用 RPC 的时候）之前需要先被序列化，接收到序列化的对象之后需要再进行反序列化；
+  * 将对象存储到文件之前需要进行序列化，将对象从文件中读取出来需要进行反序列化；
+  * 将对象**存储到数据库**（如 Redis）之前需要用到序列化，将对象从缓存数据库中读取出来需要反序列化；
+  * 将对象存**储到内存**之前需要进行序列化，从内存中读取出来之后需要进行反序列化。
+
+![img](https://oss.javaguide.cn/github/javaguide/a478c74d-2c48-40ae-9374-87aacf05188c.png)
+
+#### serialVersionUID的作用
+
+序列化号 `serialVersionUID` **属于版本控制的作用**。反序列化时，会检查 `serialVersionUID` 是否和当前类的 `serialVersionUID` 一致。如果 `serialVersionUID` 不一致则会抛出 `InvalidClassException` 异常。强烈推荐每个序列化类都手动指定其 `serialVersionUID`，如果不手动指定，那么编译器会动态生成默认的 `serialVersionUID`。
+
+#### Java默认序列方案中transient的作用
+
+`transient` 关键字的作用是：阻止实例中那些用此关键字修饰的的变量序列化；当对象被反序列化时，被 `transient` 修饰的变量值不会被持久化和恢复。
+
+关于 `transient` 还有几点注意：
+
+- `transient` **只能修饰变量**，不能修饰类和方法。
+- `transient` 修饰的变量，在反序列化后变量值将会被置成类型的默认值。例如，如果是修饰 `int` 类型，那么反序列后结果就是 `0`。
+- **`static` 变量因为不属于任何对象(Object)，所以无论有没有 `transient` 关键字修饰，均不会被序列化。**
+
+#### Java自带序列化问题
+
+- **不支持跨语言调用** : 如果调用的是其他语言开发的服务的时候就不支持了。
+- **性能差**：相比于其他序列化框架性能更低，主要原因是序列化之后的字节数组体积较大，导致传输成本加大。
+- **存在安全问题**：序列化和反序列化本身并不存在问题。但当输入的反序列化的数据可被用户控制，那么攻击者即可通过构造恶意输入，让反序列化产生非预期的对象，在此过程中执行构造的任意代码。
+
+#### IO流分类
+
+Java IO 流的 40 多个类都是从如下 4 个抽象类基类中派生出来的。
+
+- `InputStream`/`Reader`: 所有的输入流的基类，前者是字节输入流，后者是字符输入流。
+- `OutputStream`/`Writer`: 所有输出流的基类，前者是字节输出流，后者是字符输出流
+
+* IO流常用的方法
+
+  * InputStream
+
+    - `read()`：返回输入流中下一个字节的数据。返回的值介于 0 到 255 之间。如果未读取任何字节，则代码返回 `-1` ，表示文件结束。
+    - `read(byte b[ ])` : 从输入流中读取一些字节存储到数组 `b` 中。如果数组 `b` 的长度为零，则不读取。如果没有可用字节读取，返回 `-1`。如果有可用字节读取，则最多读取的字节数最多等于 `b.length` ， 返回读取的字节数。这个方法等价于 `read(b, 0, b.length)`。
+    - `read(byte b[], int off, int len)`：在`read(byte b[ ])` 方法的基础上增加了 `off` 参数（偏移量）和 `len` 参数（要读取的最大字节数）。
+    - `skip(long n)`：忽略输入流中的 n 个字节 ,返回实际忽略的字节数。
+    - `available()`：返回输入流中可以读取的字节数。
+    - `close()`：关闭输入流释放相关的系统资源。
+
+    从 Java 9 开始，`InputStream` 新增加了多个实用的方法：
+
+    - `readAllBytes()`：读取输入流中的所有字节，返回字节数组。
+    - `readNBytes(byte[] b, int off, int len)`：**阻塞**直到读取 `len` 个字节。
+    - `transferTo(OutputStream out)`：**将所有字节从一个输入流传递到一个输出流。**
+
+  * OutputStream
+
+    `OutputStream`用于将数据（字节信息）写入到目的地（通常是文件），`java.io.OutputStream`抽象类是所有字节输出流的父类。
+
+    `OutputStream` 常用方法：
+
+    - `write(int b)`：将特定字节写入输出流。
+    - `write(byte b[ ])` : 将数组`b` 写入到输出流，等价于 `write(b, 0, b.length)` 。
+    - `write(byte[] b, int off, int len)` : 在`write(byte b[ ])` 方法的基础上增加了 `off` 参数（偏移量）和 `len` 参数（要读取的最大字节数）。
+    - `flush()`：刷新此输出流并强制写出所有缓冲的输出字节。
+    - `close()`：关闭输出流释放相关的系统资源。
+
+  * Reader
+
+    * `read()` : 从输入流读取一个字符。
+    * `read(char[] cbuf)` : 从输入流中读取一些字符，并将它们存储到字符数组 `cbuf`中，等价于 `read(cbuf, 0, cbuf.length)` 。
+    * `read(char[] cbuf, int off, int len)`：在`read(char[] cbuf)` 方法的基础上增加了 `off` 参数（偏移量）和 `len` 参数（要读取的最大字符数）。
+    * `skip(long n)`：忽略输入流中的 n 个字符 ,返回实际忽略的字符数。
+
+    `close()` : 关闭输入流并释放相关的系统资源。
+
+  * Writer
+
+    * `write(int c)` : 写入单个字符。
+    * `write(char[] cbuf)`：写入字符数组 `cbuf`，等价于`write(cbuf, 0, cbuf.length)`。
+    * `write(char[] cbuf, int off, int len)`：在`write(char[] cbuf)` 方法的基础上增加了 `off` 参数（偏移量）和 `len` 参数（要读取的最大字符数）。
+    * `write(String str)`：写入字符串，等价于 `write(str, 0, str.length())` 。
+    * `write(String str, int off, int len)`：在`write(String str)` 方法的基础上增加了 `off` 参数（偏移量）和 `len` 参数（要读取的最大字符数）。
+    * `append(CharSequence csq)`：将指定的字符序列附加到指定的 `Writer` 对象并返回该 `Writer` 对象。
+    * `append(char c)`：将指定的字符附加到指定的 `Writer` 对象并返回该 `Writer` 对象。
+    * `flush()`：刷新此输出流并强制写出所有缓冲的输出字符。
+    * `close()`:关闭输出流释放相关的系统资源。
