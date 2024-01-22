@@ -627,7 +627,132 @@ System.out.println(str4 == str5);//false
 
 泛型一般有三种使用方式:**泛型类**、**泛型接口**、**泛型方法**。
 
+#### 泛型擦除
 
+虚拟机中没有泛型，只有普通类和普通方法，所有泛型类的类型参数在编译时都会被擦除，泛型类并没有自己独有的`Class`类对象。比如并不存在`List<String>.class`或是`List<Integer>.class`，而只有`List.class`
+
+1. 将所有的泛型参数用其最左边界（最顶级的父类型）类型替换
+
+   ```java
+   public static <A extends Comparable<A>> A max(Collection<A> xs) {
+       Iterator<A> xi = xs.iterator();
+       A w = xi.next();
+       while (xi.hasNext()) {
+           A x = xi.next();
+           if (w.compareTo(x) < 0)
+               w = x;
+       }
+       return w;
+   }
+   //擦除后
+    public static Comparable max(Collection xs){
+       Iterator xi = xs.iterator();
+       Comparable w = (Comparable)xi.next();
+       while(xi.hasNext())
+       {
+           Comparable x = (Comparable)xi.next();
+           if(w.compareTo(x) < 0)
+               w = x;
+       }
+       return w;
+   }
+   
+   ```
+
+2. 移除所有的类型参数
+
+   ```java
+   Map<String, String> map = new HashMap<String, String>();
+   map.put("name", "hollis");
+   map.put("wechat", "Hollis");
+   map.put("blog", "www.hollischuang.com");
+   //擦除后
+   Map map = new HashMap();
+   map.put("name", "hollis");
+   map.put("wechat", "Hollis");
+   map.put("blog", "www.hollischuang.com"); 
+   ```
+
+#### 泛型可能会到的问题
+
+**一、当泛型遇到重载**
+
+```java
+public class GenericTypes {
+
+    public static void method(List<String> list) {
+        System.out.println("invoke method(List<String> list)");
+    }
+
+    public static void method(List<Integer> list) {
+        System.out.println("invoke method(List<Integer> list)");
+    }
+}
+```
+
+上面这段代码，有两个重载的函数，因为他们的参数类型不同，一个是`List<String>`另一个是`List<Integer>` ，但是，这段代码是编译通不过的。因为我们前面讲过，参数`List<Integer>`和`List<String>`编译之后都被擦除了，变成了一样的原生类型 List，擦除动作导致这两个方法的特征签名变得一模一样。
+
+**二、当泛型遇到 catch**
+
+泛型的类型参数不能用在 Java 异常处理的 catch 语句中。因为异常处理是由 JVM 在运行时刻来进行的。由于类型信息被擦除，JVM 是无法区分两个异常类型`MyException<String>`和`MyException<Integer>`的
+
+#### 泛型限制
+
+泛型的限制一般是由泛型擦除机制导致的。擦除为 object 后无法进行类型判断
+
+* 只能声明不能实例化 T 类型变量
+
+  不管是在范型类还是范型方法中都不能存在类似`T t = new T()`的代码，因为不知道T类的构造函数是何种类型的。
+
+* 泛型参数不能是基本类型。因为基本类型不是 object 子类，应该用基本类型对应的引用类型代
+  替。（如，不能用<int>,而要用<interger>）
+
+* 不能实例化泛型的数组。擦除后为 obiect 后无法进行类型判断
+
+* 泛型无法使用 Instance of 和 getclass() 进行类型判断。
+
+* 不能实现两个不同泛型参数的同一接口，擦除后多个父类的桥方法将冲突
+
+* 不能使用 static 修饰泛型变量
+
+  如下代码无法编译，因为不能用static修饰泛型变量，因为泛型的目的就是为了用通配性，static变量是类变量，具有唯一性，放在方法区。
+
+  ```java
+  Class MyClass<T> {
+   static T instance;
+  }
+  
+  ```
+
+#### 泛型通配符
+
+* ？与T的区别
+
+  * T可以用于声明变量或常量而 ? 不行
+  * T一般用于声明泛型类或方法，通配符 ? 一般用于泛型方法的调用代码和形参
+  * T在编译期会被擦除为限定类型或 object ，通配符用于捕获具体类型。
+
+* ？无界通配符作用
+
+  无界通配符可以接收任何泛型类型数据，用于实现不依赖于具体类型参数的简单方法，可以捕获参数类型并交由泛型方法进行处理。
+
+  * List<?>与List区别
+    * List<?>list 表示 list 是持有某种特定类型的 List，但是不知道具体是哪种类型。因此，我们
+      添加元素进去的时候会报错。
+    * List list 表示 list 是持有的元素的类型是 object ，因此可以添加任何类型的对象，只不过
+      编译器会有警告信息。
+
+* 上边界通配符和下边界通配符
+
+  * <? extends T> 上边界
+
+    上边界通配符extends 可以实现泛型的向上转型，**即传入的类型实参必须是指定类型的子类型**
+
+  * <? super T> 下边界
+
+    下边界通配符 super 与上边界通配符 extends 刚好相反，它可以实现泛型的向下转型即**传入的类型实参必须是指定类型的父类型。**
+
+  ![](img/1.png)
 
 #### 获取Class对象的方式
 
@@ -753,3 +878,74 @@ Java IO 流的 40 多个类都是从如下 4 个抽象类基类中派生出来�
     * `append(char c)`：将指定的字符附加到指定的 `Writer` 对象并返回该 `Writer` 对象。
     * `flush()`：刷新此输出流并强制写出所有缓冲的输出字符。
     * `close()`:关闭输出流释放相关的系统资源。
+
+#### IO采用的设计模式有哪些
+
+* 装饰器模式
+
+  装饰器模式通过组合替代**继承来扩展原始类的功能**，如BufferIN/OUT系列
+
+* 适配器模式
+
+  主要用于接口互不兼容的类的协调工作，如`InputStream` 和 `OutputStream` 的子类是被适配者， `InputStreamReader` 和 `OutputStreamWriter`是适配器。
+
+  ```java
+  // InputStreamReader 是适配器，FileInputStream 是被适配的类
+  InputStreamReader isr = new InputStreamReader(new FileInputStream(fileName), "UTF-8");
+  // BufferedReader 增强 InputStreamReader 的功能（装饰器模式）
+  BufferedReader bufferedReader = new BufferedReader(isr);
+  
+  ```
+
+* 工厂模式
+
+  工厂模式用于创建对象
+
+* 观察者模式
+
+  NIO 中的文件目录监听服务使用到了观察者模式，或者监听网络端口
+
+
+
+#### BIO、NIO、AIO三种模型
+
+* **BIO 同步阻塞 IO 模型** 
+
+  同步阻塞 IO 模型中，应用程序发起 read 调用后，会一直阻塞，直到内核把数据拷贝到用户空间。
+
+![图源：《深入拆解Tomcat & Jetty》](https://oss.javaguide.cn/p3-juejin/6a9e704af49b4380bb686f0c96d33b81~tplv-k3u1fbpfcp-watermark.png)
+
+* NIO 
+
+  * 同步非阻塞模型
+
+    同步非阻塞 IO 模型中，应用程序会一直发起 read 调用，等待数据从内核空间拷贝到用户空间的这段时间里，线程依然是阻塞的，直到在内核把数据拷贝到用户空间。
+
+    相比于同步阻塞 IO 模型，同步非阻塞 IO 模型确实有了很大改进。通过轮询操作，避免了一直阻塞。
+
+    但是，这种 IO 模型同样存在问题：**应用程序不断进行 I/O 系统调用轮询数据是否已经准备好的过程是十分消耗 CPU 资源的。**
+
+    ![图源：《深入拆解Tomcat & Jetty》](https://oss.javaguide.cn/p3-juejin/bb174e22dbe04bb79fe3fc126aed0c61~tplv-k3u1fbpfcp-watermark.png)
+
+  * IO多路复用
+
+    IO 多路复用模型中，线程首先发起 select 调用，询问内核数据是否准备就绪，等内核把数据准备好了，用户线程再发起 read 调用。read 调用的过程（数据从内核空间 -> 用户空间）还是阻塞的。
+
+    ![img](https://oss.javaguide.cn/github/javaguide/java/io/88ff862764024c3b8567367df11df6ab~tplv-k3u1fbpfcp-watermark.png)
+  
+    > 目前支持 IO 多路复用的系统调用，有 select，epoll 等等。select 系统调用，目前几乎在所有的操作系统上都有支持。
+    >
+    > - **select 调用**：内核提供的系统调用，它支持一次查询多个系统调用的可用状态。几乎所有的操作系统都支持。
+    > - **epoll 调用：linux 2.6 内核，属于 select 调用的增强版本，优化了 IO 的执行效率。**
+  
+    **IO 多路复用模型，通过减少无效的系统调用，减少了对 CPU 资源的消耗。**
+  
+    Java 中的 NIO ，有一个非常重要的**选择器 ( Selector )** 的概念，也可以被称为 **多路复用器**。通过它，只需要一个线程便可以管理多个客户端连接。当客户端数据到了之后，才会为其服务。
+  
+    ![Buffer、Channel和Selector三者之间的关系](https://oss.javaguide.cn/github/javaguide/java/nio/channel-buffer-selector.png)
+  
+  * AIO
+  
+    异步 IO 是基于事件和回调机制实现的，也就是**应用操作之后会直接返回，不会堵塞在那里，当后台处理完成，操作系统会通知相应的线程进行后续的操作**。
+  
+    ![img](https://oss.javaguide.cn/github/javaguide/java/io/3077e72a1af049559e81d18205b56fd7~tplv-k3u1fbpfcp-watermark.png)
