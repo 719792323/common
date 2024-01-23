@@ -949,3 +949,222 @@ Java IO 流的 40 多个类都是从如下 4 个抽象类基类中派生出来�
     异步 IO 是基于事件和回调机制实现的，也就是**应用操作之后会直接返回，不会堵塞在那里，当后台处理完成，操作系统会通知相应的线程进行后续的操作**。
   
     ![img](https://oss.javaguide.cn/github/javaguide/java/io/3077e72a1af049559e81d18205b56fd7~tplv-k3u1fbpfcp-watermark.png)
+
+#### Unsafe类作用
+
+1. **内存操作（堆外内存操作）**
+
+   ```java
+   //分配新的本地空间
+   public native long allocateMemory(long bytes);
+   //重新调整内存空间的大小
+   public native long reallocateMemory(long address, long bytes);
+   //将内存设置为指定值
+   public native void setMemory(Object o, long offset, long bytes, byte value);
+   //内存拷贝
+   public native void copyMemory(Object srcBase, long srcOffset,Object destBase, long destOffset,long bytes);
+   //清除内存
+   public native void freeMemory(long address);
+   ```
+
+   案例：
+
+   ```java
+   private void memoryTest() {
+       int size = 4;
+       long addr = unsafe.allocateMemory(size);
+       long addr3 = unsafe.reallocateMemory(addr, size * 2);
+       System.out.println("addr: "+addr);
+       System.out.println("addr3: "+addr3);
+       try {
+           unsafe.setMemory(null,addr ,size,(byte)1);
+           for (int i = 0; i < 2; i++) {
+               unsafe.copyMemory(null,addr,null,addr3+size*i,4);
+           }
+           System.out.println(unsafe.getInt(addr));
+           System.out.println(unsafe.getLong(addr3));
+       }finally {
+           unsafe.freeMemory(addr);
+           unsafe.freeMemory(addr3);
+       }
+   }
+   //结果
+   addr: 2433733895744
+   addr3: 2433733894944
+   16843009
+   72340172838076673
+   
+   ```
+
+   分析：
+
+   首先使用`allocateMemory`方法申请 4 字节长度的内存空间，调用`setMemory`方法**向每个字节写入内容为`byte`类型的 1**，当使用 Unsafe 调用`getInt`方法时，因为一个`int`型变量占 4 个字节，会一次性读取 4 个字节，组成一个`int`的值，对应的十进制结果为 16843009。
+
+   ![img](https://oss.javaguide.cn/github/javaguide/java/basis/unsafe/image-20220717144344005.png)
+
+   ------
+
+   在代码中调用`reallocateMemory`方法重新分配了一块 8 字节长度的内存空间，通过比较`addr`和`addr3`可以看到和之前申请的内存地址是不同的。在代码中的第二个 for 循环里，调用`copyMemory`方法进行了两次内存的拷贝，每次拷贝内存地址`addr`开始的 4 个字节，分别拷贝到以`addr3`和`addr3+4`开始的内存空间上：
+
+   ![img](https://oss.javaguide.cn/github/javaguide/java/basis/unsafe/image-20220717144354582.png)
+
+   拷贝完成后，使用`getLong`方法一次性读取 8 个字节，得到`long`类型的值为 72340172838076673。
+
+   **需要注意，通过这种方式分配的内存属于 堆外内存 ，是无法进行垃圾回收的，需要我们把这些内存当做一种资源去手动调用`freeMemory`方法进行释放，否则会产生内存泄漏。通用的操作内存方式是在`try`中执行对内存的操作，最终在`finally`块中进行内存的释放。**
+
+2. **内存屏障（防止指令重排和让cache失效）**
+
+   在介绍内存屏障前，需要知道编译器和 CPU 会在保证程序输出结果一致的情况下，会对代码进行重排序，从指令优化角度提升性能。而指令重排序可能会带来一个不好的结果，导致 CPU 的高速缓存和内存中数据的不一致，而**内存屏障（`Memory Barrier`）就是通过阻止屏障两边的指令重排序从而避免编译器和硬件的不正确优化情况**。
+
+   在硬件层面上，内存屏障是 CPU 为了防止代码进行重排序而提供的指令，不同的硬件平台上实现内存屏障的方法可能并不相同。**在 Java8 中，引入了 3 个内存屏障的函数**，它屏蔽了操作系统底层的差异，允许在代码中定义、并统一由 JVM 来生成内存屏障指令，来实现内存屏障的功能。
+
+   ```java
+   //内存屏障，禁止load操作重排序。屏障前的load操作不能被重排序到屏障后，屏障后的load操作不能被重排序到屏障前
+   public native void loadFence();
+   //内存屏障，禁止store操作重排序。屏障前的store操作不能被重排序到屏障后，屏障后的store操作不能被重排序到屏障前
+   public native void storeFence();
+   //内存屏障，禁止load、store操作重排序
+   public native void fullFence();
+   ```
+
+   **内存屏障可以看做对内存随机访问的操作中的一个同步点，使得此点之前的所有读写操作都执行后才可以开始执行此点之后的操作。以`loadFence`方法为例，它会禁止读操作重排序，保证在这个屏障之前的所有读操作都已经完成，并且将缓存数据设为无效，重新从主存中进行加载。**
+
+   ```java
+   @Getter
+   class ChangeThread implements Runnable{
+       /**volatile**/ boolean flag=false;
+       @Override
+       public void run() {
+           try {
+               Thread.sleep(3000);
+           } catch (InterruptedException e) {
+               e.printStackTrace();
+           }
+           System.out.println("subThread change flag to:" + flag);
+           flag = true;
+       }
+   }
+   public static void main(String[] args){
+       ChangeThread changeThread = new ChangeThread();
+       new Thread(changeThread).start();
+       while (true) {
+           boolean flag = changeThread.isFlag();
+           unsafe.loadFence(); //加入读内存屏障
+           if (flag){
+               System.out.println("detected flag changed");
+               break;
+           }
+       }
+       System.out.println("main thread end");
+   }
+   subThread change flag to:false
+   detected flag changed
+   main thread end
+   ```
+
+   如果删掉上面代码中的`loadFence`方法，那么主线程将无法感知到`flag`发生的变化，会一直在`while`中循环。可以用图来表示上面的过程：
+
+   ![img](https://oss.javaguide.cn/github/javaguide/java/basis/unsafe/image-20220717144703446.png)
+
+   了解 Java 内存模型（`JMM`）的小伙伴们应该清楚，**运行中的线程不是直接读取主内存中的变量的，只能操作自己工作内存中的变量，然后同步到主内存中，并且线程的工作内存是不能共享的**。上面的图中的流程就是子线程借助于主内存，将修改后的结果同步给了主线程，进而修改主线程中的工作空间，跳出循环。
+
+3. 对象操作
+
+   ```java
+   import sun.misc.Unsafe;
+   import java.lang.reflect.Field;
+   
+   public class Main {
+   
+       private int value;
+   
+       public static void main(String[] args) throws Exception{
+           Unsafe unsafe = reflectGetUnsafe();
+           assert unsafe != null;
+           long offset = unsafe.objectFieldOffset(Main.class.getDeclaredField("value"));
+           Main main = new Main();
+           System.out.println("value before putInt: " + main.value);
+           unsafe.putInt(main, offset, 42);
+           System.out.println("value after putInt: " + main.value);
+     System.out.println("value after putInt: " + unsafe.getInt(main, offset));
+       }
+   
+       private static Unsafe reflectGetUnsafe() {
+           try {
+               Field field = Unsafe.class.getDeclaredField("theUnsafe");
+               field.setAccessible(true);
+               return (Unsafe) field.get(null);
+           } catch (Exception e) {
+               e.printStackTrace();
+               return null;
+           }
+       }
+   
+   }
+   value before putInt: 0
+   value after putInt: 42
+   value after putInt: 42
+   ```
+
+   **对象属性**
+
+   对象成员属性的内存偏移量获取，以及字段属性值的修改，在上面的例子中我们已经测试过了。除了前面的`putInt`、`getInt`方法外，Unsafe 提供了全部 8 种基础数据类型以及`Object`的`put`和`get`方法，并且**所有的`put`方法都可以越过访问权限，直接修改内存中的数据（不用和反射一样setAccess）**。阅读 openJDK 源码中的注释发现，基础数据类型和`Object`的读写稍有不同，基础数据类型是直接操作的属性值（`value`），而`Object`的操作则是基于引用值（`reference value`）。下面是`Object`的读写方法：
+
+   ```java
+   //在对象的指定偏移地址获取一个对象引用
+   public native Object getObject(Object o, long offset);
+   //在对象指定偏移地址写入一个对象引用
+   public native void putObject(Object o, long offset, Object x);
+   ```
+
+   除了对象属性的普通读写外，`Unsafe` 还提供了 **volatile 读写**和**有序写入**方法。`volatile`读写方法的覆盖范围与普通读写相同，包含了全部基础数据类型和`Object`类型，以`int`类型为例：
+
+   ```java
+   //在对象的指定偏移地址处读取一个int值，支持volatile load语义
+   public native int getIntVolatile(Object o, long offset);
+   //在对象指定偏移地址处写入一个int，支持volatile store语义
+   public native void putIntVolatile(Object o, long offset, int x);
+   ```
+
+   相对于普通读写来说，`volatile`读写具有更高的成本，因为它需要保证可见性和有序性。在执行`get`操作时，会强制从主存中获取属性值，在使用`put`方法设置属性值时，会强制将值更新到主存中，从而保证这些变更对其他线程是可见的。
+
+   有序写入的方法有以下三个：
+
+   ```java
+   public native void putOrderedObject(Object o, long offset, Object x);
+   public native void putOrderedInt(Object o, long offset, int x);
+   public native void putOrderedLong(Object o, long offset, long x);
+   ```
+
+   有序写入的成本相对`volatile`较低，因为它只保证写入时的有序性，而不保证可见性，也就是一个线程写入的值不能保证其他线程立即可见。为了解决这里的差异性，需要对内存屏障的知识点再进一步进行补充，首先需要了解两个指令的概念：
+
+   - `Load`：将主内存中的数据拷贝到处理器的缓存中
+   - `Store`：将处理器缓存的数据刷新到主内存中
+
+   顺序写入与`volatile`写入的差别在于，在顺序写时加入的内存屏障类型为`StoreStore`类型，而在`volatile`写入时加入的内存屏障是`StoreLoad`类型，如下图所示：
+
+   ![img](https://oss.javaguide.cn/github/javaguide/java/basis/unsafe/image-20220717144834132.png)
+
+   在有序写入方法中，使用的是`StoreStore`屏障，该屏障确保`Store1`立刻刷新数据到内存，这一操作先于`Store2`以及后续的存储指令操作。而在`volatile`写入中，使用的是`StoreLoad`屏障，该屏障确保`Store1`立刻刷新数据到内存，这一操作先于`Load2`及后续的装载指令，并且，`StoreLoad`屏障会使该屏障之前的所有内存访问指令，包括存储指令和访问指令全部完成之后，才执行该屏障之后的内存访问指令。
+
+   综上所述，在上面的三类写入方法中，在写入效率方面，按照`put`、`putOrder`、`putVolatile`的顺序效率逐渐降低。
+
+4. 数组操作
+
+   
+
+5. CAS 操作
+
+   
+
+6. 线程调度
+
+   
+
+7. Class 操作
+
+   
+
+8. 系统信息
+
+   

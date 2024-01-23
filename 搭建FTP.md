@@ -51,7 +51,7 @@
 6. 重启vsftp服务
 
    ```shell
-   systemctl restart vsftp
+   systemctl restart vsftpd
    ```
 
    

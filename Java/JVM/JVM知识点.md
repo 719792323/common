@@ -106,6 +106,48 @@ Java 世界中“几乎”所有的对象都在堆中分配，但是，随着 JI
 1. **`java.lang.OutOfMemoryError: GC Overhead Limit Exceeded`**：当 JVM 花太多时间执行垃圾回收并且只能回收很少的堆空间时，就会发生此错误。
 2. **`java.lang.OutOfMemoryError: Java heap space`** :假如在创建新的对象时, 堆内存中的空间不足以存放新创建的对象, 就会引发此错误。(和配置的最大堆内存有关，且受制于物理内存大小。最大堆内存可通过`-Xmx`参数配置，若没有特别配置，将会使用默认值，详见：[Default Java 8 max heap sizeopen in new window](https://stackoverflow.com/questions/28272923/default-xmxsize-in-java-8-max-heap-size))
 
+### 堆外内存使用
+
+* 为什么要使用堆外内存
+
+  * 对垃圾回收停顿的改善（**堆内内存会经常收垃圾回收影响**）。由于堆外内存是直接受操作系统管理而不是 JVM，所以当我们使用堆外内存时，即可保持较小的堆内内存规模。从而在 GC 时减少回收停顿对于应用的影响。
+
+  * 提升程序 I/O 操作的性能。通常在 I/O 通信过程中，会存在堆内内存到堆外内存的数据拷贝操作，对于需要频繁进行内存间数据拷贝且生命周期较短的暂存数据，都建议存储到堆外内存。
+
+  `DirectByteBuffer` 是 Java 用于实现堆外内存的一个重要类，通常用在通信过程中做缓冲池，如在 Netty、MINA 等 NIO 框架中应用广泛。`DirectByteBuffer` 对于堆外内存的创建、使用、销毁等逻辑均由 Unsafe 提供的堆外内存 API 来实现。
+
+  如下为 `DirectByteBuffer` 构造函数，创建 `DirectByteBuffer` 的时候，通过 `Unsafe.allocateMemory` 分配内存、`Unsafe.setMemory` 进行内存初始化，而后构建 `Cleaner` 对象用于跟踪 `DirectByteBuffer` 对象的垃圾回收，以实现当 `DirectByteBuffer` 被垃圾回收时，分配的堆外内存一起被释放。
+
+  ```java
+  DirectByteBuffer(int cap) {                   
+      super(-1, 0, cap, cap);
+      boolean pa = VM.isDirectMemoryPageAligned();
+      int ps = Bits.pageSize();
+      long size = Math.max(1L, (long)cap + (pa ? ps : 0));
+      Bits.reserveMemory(size, cap);
+  
+      long base = 0;
+      try {
+          // 分配内存并返回基地址
+          base = unsafe.allocateMemory(size);
+      } catch (OutOfMemoryError x) {
+          Bits.unreserveMemory(size, cap);
+          throw x;
+      }
+      // 内存初始化
+      unsafe.setMemory(base, size, (byte) 0);
+      if (pa && (base % ps != 0)) {
+          // Round up to page boundary
+          address = base + ps - (base & (ps - 1));
+      } else {
+          address = base;
+      }
+      // 跟踪 DirectByteBuffer 对象的垃圾回收，以实现堆外内存释放
+      cleaner = Cleaner.create(this, new Deallocator(base, size, cap));
+      att = null;
+  }
+  ```
+
 ### 方法区
 
 * **方法区和永久代以及元空间是什么关系?**
