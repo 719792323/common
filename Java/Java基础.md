@@ -1151,6 +1151,15 @@ Java IO 流的 40 多个类都是从如下 4 个抽象类基类中派生出来�
 
 4. 数组操作
 
+   `arrayBaseOffset` 与 `arrayIndexScale` 这两个方法配合起来使用，即可定位数组中每个元素在内存中的位置。
+
+   ```java
+   //返回数组中第一个元素的偏移地址
+   public native int arrayBaseOffset(Class<?> arrayClass);
+   //返回数组中一个元素占用的大小
+   public native int arrayIndexScale(Class<?> arrayClass);
+   ```
+
    
 
 5. CAS 操作
