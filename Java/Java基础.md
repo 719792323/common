@@ -1068,7 +1068,7 @@ Java IO 流的 40 多个类都是从如下 4 个抽象类基类中派生出来�
 
    了解 Java 内存模型（`JMM`）的小伙伴们应该清楚，**运行中的线程不是直接读取主内存中的变量的，只能操作自己工作内存中的变量，然后同步到主内存中，并且线程的工作内存是不能共享的**。上面的图中的流程就是子线程借助于主内存，将修改后的结果同步给了主线程，进而修改主线程中的工作空间，跳出循环。
 
-3. 对象操作
+3. **对象操作**
 
    ```java
    import sun.misc.Unsafe;
@@ -1149,6 +1149,45 @@ Java IO 流的 40 多个类都是从如下 4 个抽象类基类中派生出来�
 
    综上所述，在上面的三类写入方法中，在写入效率方面，按照`put`、`putOrder`、`putVolatile`的顺序效率逐渐降低。
 
+   **对象实例化**
+
+   使用 `Unsafe` 的 `allocateInstance` 方法，允许我们使用非常规的方式进行对象的实例化，首先定义一个实体类，并且在构造函数中对其成员变量进行赋值操作：
+
+   
+
+   ```java
+   @Data
+   public class A {
+       private int b;
+       public A(){
+           this.b =1;
+       }
+   }
+   ```
+
+   分别基于构造函数、反射以及 `Unsafe` 方法的不同方式创建对象进行比较：
+
+   
+
+   ```java
+   public void objTest() throws Exception{
+       A a1=new A();
+       System.out.println(a1.getB());
+       A a2 = A.class.newInstance();
+       System.out.println(a2.getB());
+       A a3= (A) unsafe.allocateInstance(A.class);
+       System.out.println(a3.getB());
+   }
+   ```
+
+   打印结果分别为 1、1、0，**说明通过`allocateInstance`方法创建对象过程中，不会调用类的构造方法。使用这种方式创建对象时，只用到了`Class`对象**，所以说如果想要跳过对象的初始化阶段或者跳过构造器的安全检查，就可以使用这种方法。在上面的例子中，如果将 A 类的构造函数改为`private`类型，将无法通过构造函数在上面的例子中，如果将 A 类的构造函数改为`private`类型，将无法通过构造函数和反射创建对象（可以通过构造函数对象 setAccessible 后创建对象），但`allocateInstance`方法仍然有效。
+
+   应用：
+
+   **常规对象实例化方式**：我们通常所用到的创建对象的方式，从本质上来讲，都是通过 new 机制来实现对象的创建。但是，new 机制有个特点就是当类只提供有参的构造函数且无显示声明无参构造函数时，则必须使用有参构造函数进行对象构造，而使用有参构造函数时，必须传递相应个数的参数才能完成对象实例化。
+
+   **非常规的实例化方式**：而 Unsafe 中提供 allocateInstance 方法，仅通过 Class 对象就可以创建此类的实例对象，而且不需要调用其构造函数、初始化代码、JVM 安全检查等。它抑制修饰符检测，也就是即使构造器是 private 修饰的也能通过此方法实例化，只需提类对象即可创建相应的对象。由于这种特性，allocateInstance 在 java.lang.invoke、Objenesis（提供绕过类构造器的对象生成方式）、Gson（反序列化时用到）中都有相应的应用。
+
 4. 数组操作
 
    `arrayBaseOffset` 与 `arrayIndexScale` 这两个方法配合起来使用，即可定位数组中每个元素在内存中的位置。
@@ -1160,20 +1199,84 @@ Java IO 流的 40 多个类都是从如下 4 个抽象类基类中派生出来�
    public native int arrayIndexScale(Class<?> arrayClass);
    ```
 
-   
+   这两个与数据操作相关的方法，在 `java.util.concurrent.atomic` 包下的 `AtomicIntegerArray`（可以实现对 `Integer` 数组中每个元素的原子性操作）中有典型的应用，如下图 `AtomicIntegerArray` 源码所示，通过 `Unsafe` 的 `arrayBaseOffset`、`arrayIndexScale` 分别获取数组首元素的偏移地址 `base` 及单个元素大小因子 `scale` 。后续相关原子性操作，均依赖于这两个值进行数组中元素的定位，如下图二所示的 `getAndAdd` 方法即通过 `checkedByteOffset` 方法获取某数组元素的偏移地址，而后通过 CAS 实现原子性操作。
+
+   ![img](https://oss.javaguide.cn/github/javaguide/java/basis/unsafe/image-20220717144927257.png)
 
 5. CAS 操作
 
+   ```java
+   /**
+     *  CAS
+     * @param o         包含要修改field的对象
+     * @param offset    对象中某field的偏移量
+     * @param expected  期望值
+     * @param update    更新值
+     * @return          true | false
+     */
+   public final native boolean compareAndSwapObject(Object o, long offset,  Object expected, Object update);
    
+   public final native boolean compareAndSwapInt(Object o, long offset, int expected,int update);
+   
+   public final native boolean compareAndSwapLong(Object o, long offset, long expected, long update);
+   
+   ```
 
 6. 线程调度
 
+   ```java
+   //取消阻塞线程
+   public native void unpark(Object thread);
+   //阻塞线程
+   public native void park(boolean isAbsolute, long time);
+   //获得对象锁（可重入锁）
+   @Deprecated
+   public native void monitorEnter(Object o);
+   //释放对象锁
+   @Deprecated
+   public native void monitorExit(Object o);
+   //尝试获取对象锁
+   @Deprecated
+   public native boolean tryMonitorEnter(Object o);
+   ```
+
+   Java 锁和同步器框架的核心类 `AbstractQueuedSynchronizer` (AQS)，就是通过调用`LockSupport.park()`和`LockSupport.unpark()`实现线程的阻塞和唤醒的，而 `LockSupport` 的 `park`、`unpark` 方法实际是调用 `Unsafe` 的 `park`、`unpark` 方式实现的。
+
    
 
-7. Class 操作
+   ```java
+   public static void park(Object blocker) {
+       Thread t = Thread.currentThread();
+       setBlocker(t, blocker);
+       UNSAFE.park(false, 0L);
+       setBlocker(t, null);
+   }
+   public static void unpark(Thread thread) {
+       if (thread != null)
+           UNSAFE.unpark(thread);
+   }
+   ```
 
-   
+   `LockSupport` 的`park`方法调用了 `Unsafe` 的`park`方法来阻塞当前线程，此方法将线程阻塞后就不会继续往后执行，直到有其他线程调用`unpark`方法唤醒当前线程。
+
+7. Class操作
+
+   ```java
+   //获取静态属性的偏移量
+   public native long staticFieldOffset(Field f);
+   //获取静态属性的对象指针
+   public native Object staticFieldBase(Field f);
+   //判断类是否需要初始化（用于获取类的静态属性前进行检测）
+   public native boolean shouldBeInitialized(Class<?> c);
+   ```
 
 8. 系统信息
 
-   
+
+```java
+//返回系统指针的大小。返回值为4（32位系统）或 8（64位系统）。
+public native int addressSize();
+//内存页的大小，此值为2的幂次方。
+public native int pageSize();
+```
+
