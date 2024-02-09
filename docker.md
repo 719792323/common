@@ -37,6 +37,17 @@ yum install -y docker-compose
 docker-compose --version
 ```
 
+## 1.2 Ubuntu安装
+
+```shell
+# 安装docker所需的工具（安装最新版即可）
+apt-get update
+apt-get install docker.io -y
+# 设置开机启动并启动docker  
+sudo systemctl start docker
+sudo systemctl enable docker
+```
+
 
 
 # docker network
@@ -82,7 +93,30 @@ docker run -d --name nginx -p 80:80 --network mynet --network-alias nginx --priv
 
 # docker-compose
 
+### 1.安装
 
+* github下载可执行文件
+* unbuntu: apt-get install -y docker-compose
+
+#### 2.命令
+
+[](https://blog.csdn.net/m0_51913750/article/details/131743170)
+
+* up 创建对应容器
+
+  * -d 后台运行
+
+  * -f 指定dokcer-compose文件（后面的命令都可以用）
+
+* down 停止并删除对应容器
+
+* stop 停止容器
+
+* ps 查看容器状态
+
+* restart 重启
+
+* logs 日志
 
 # docker一些快捷指令
 

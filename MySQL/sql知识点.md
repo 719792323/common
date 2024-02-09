@@ -165,6 +165,18 @@
   > count(*)、count(1)、count(column)区别是什么
 
   **注意：count如果不接窗口函数使用会只返回一条数据**
+  
+* in
+
+  * 单列值in
+
+    column in ()
+
+  * 多列值in
+
+    (c1,c2) in ((a1,b1),(a2,b2))
+
+    注意：in中如果有子查询时，不要求子查询与c1与c2名称相同，in是按位置进行匹配
 
 # 函数
 
@@ -209,3 +221,42 @@ WHERE column_name REGEXP 'pattern';
 # 窗口函数
 
 ![[外链图片转存失败,源站可能有防盗链机制,建议将图片保存下来直接上传(img-3ut14zoW-1628578703352)(C:\Users\hbwhx\Desktop\学习\窗口函数\Windows Functions.assets\image-20210713144138756.png)]](https://img-blog.csdnimg.cn/1456767a7ac84c0fbfc9e69d1436af92.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3dlaXhpbl80NDg1MjA2Nw==,size_16,color_FFFFFF,t_70)
+
+* 窗口函数写法
+
+  > <窗口函数> over (partition by <用于分组的列名> order by <用于排序的列名> rows/range子句<用于定义窗口大小> )
+
+* rows、range用法（在partition 和order定义的范围下，从当前行进行窗口划分）
+
+  > [<ROWS or RANGE clause> BETWEEN <Start expr> AND <End expr>] 
+  
+  * ROWS: 表示按照行的范围进行定义框架，根据order by子句排序后，取的前N行及后N行的数据计算（与当前行的值无关，只与排序后的行号相关）。常用：rows n perceding表示从当前行到前n行（一共n+1行）
+  
+  * RANGE：表示按照值的范围进行定义框架，根据order by子句排序后，指定当前行对应值的范围取值，行数不固定，只要行值在范围内，对应行都包含在内。适用于对日期、时间、数值排序分组
+  
+  * 范围控制（mysql8好像还不支持following）
+    Current Row	当前行
+    N preceding	前 n 行，n 为数字， 比如 2 Preceding 表示前2行
+    unbounded preceding	（当前行到开头）
+    N following	后N行，n 为数字， 比如 2 following 表示后2行
+    unbounded following	（当前行到结尾）
+  
+    Between Start expr & End expr（表达式组合）
+  
+  * range取特定日期区间
+    range interval 7-1 day preceding	最近7天的值
+    range between interval 1 day preceding and interval 1 day following	前后一天和当天的值
+  
+  ![](img/2.png)
+  
+* 聚合函数
+
+  * 只使用partition by 不使用order by，那么聚合函数结果等于分组总结果
+
+    ![](img/3.png)
+
+  * 使用order by后聚合函数结果为累计结果
+
+    ![](img/4.png)
+
+  * 使用range之后针对的就是当前划分窗口的累计和
