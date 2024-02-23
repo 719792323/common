@@ -913,7 +913,7 @@ Java IO 流的 40 多个类都是从如下 4 个抽象类基类中派生出来�
 
   同步阻塞 IO 模型中，应用程序发起 read 调用后，会一直阻塞，直到内核把数据拷贝到用户空间。
 
-![图源：《深入拆解Tomcat & Jetty》](https://oss.javaguide.cn/p3-juejin/6a9e704af49b4380bb686f0c96d33b81~tplv-k3u1fbpfcp-watermark.png)
+![](https://oss.javaguide.cn/p3-juejin/6a9e704af49b4380bb686f0c96d33b81~tplv-k3u1fbpfcp-watermark.png)
 
 * NIO 
 
@@ -938,17 +938,47 @@ Java IO 流的 40 多个类都是从如下 4 个抽象类基类中派生出来�
     > - **select 调用**：内核提供的系统调用，它支持一次查询多个系统调用的可用状态。几乎所有的操作系统都支持。
     > - **epoll 调用：linux 2.6 内核，属于 select 调用的增强版本，优化了 IO 的执行效率。**
   
+    **Buffer（缓冲区）**：NIO 读写数据都是通过缓冲区进行操作的。读操作的时候将 Channel 中的数据填充到 Buffer 中，而写操作时将 Buffer 中的数据写入到 Channel 中。
+  
+    **Channel（通道）**：Channel 是一个双向的、可读可写的数据传输通道，NIO 通过 Channel 来实现数据的输入输出。通道是一个抽象的概念，它可以代表文件、套接字或者其他数据源之间的连接。
+  
+    **Selector（选择器）**：允许一个线程处理多个 Channel，基于事件驱动的 I/O 多路复用模型。所有的 Channel 都可以注册到 Selector 上，由 Selector 来分配线程来处理事件。
+  
     **IO 多路复用模型，通过减少无效的系统调用，减少了对 CPU 资源的消耗。**
   
     Java 中的 NIO ，有一个非常重要的**选择器 ( Selector )** 的概念，也可以被称为 **多路复用器**。通过它，只需要一个线程便可以管理多个客户端连接。当客户端数据到了之后，才会为其服务。
   
     ![Buffer、Channel和Selector三者之间的关系](https://oss.javaguide.cn/github/javaguide/java/nio/channel-buffer-selector.png)
   
+    > Nio零拷贝
+  
+    零拷贝是提升 IO 操作性能的一个常用手段，像 ActiveMQ、Kafka 、RocketMQ、QMQ、Netty 等顶级开源项目都用到了零拷贝。
+  
+    **零拷贝是指计算机执行 IO 操作时，CPU 不需要将数据从一个存储区域复制到另一个存储区域，从而可以减少上下文切换以及 CPU 的拷贝时间**。也就是说，零拷贝主主要解决操作系统在处理 I/O 操作时频繁复制数据的问题。零拷贝的常见实现技术有： **`mmap+write`、`sendfile`和 `sendfile + DMA gather copy` 。**
+  
+    下图展示了各种零拷贝技术的对比图：
+  
+    |                                | CPU 拷贝 | DMA 拷贝 | 系统调用   | 上下文切换 |
+    | ------------------------------ | -------- | -------- | ---------- | ---------- |
+    | 传统方法                       | 2        | 2        | read+write | 4          |
+    | **mmap+write**                 | 1        | 2        | mmap+write | 4          |
+    | **sendfile**                   | 1        | 2        | sendfile   | 2          |
+    | **sendfile + DMA gather copy** | 0        | 2        | sendfile   | 2          |
+  
+    可以看出，无论是传统的 I/O 方式，还是引入了零拷贝之后，2 次 DMA(Direct Memory Access) 拷贝是都少不了的。因为两次 DMA 都是依赖硬件完成的。**零拷贝主要是减少了 CPU 拷贝及上下文的切换**。
+  
+    Java 对零拷贝的支持：
+  
+    - `MappedByteBuffer` 是 NIO 基于内存映射（`mmap`）这种零拷⻉⽅式的提供的⼀种实现，底层实际是调用了 Linux 内核的 `mmap` 系统调用。它可以将一个文件或者文件的一部分映射到内存中，形成一个虚拟内存文件，这样就可以直接操作内存中的数据，而不需要通过系统调用来读写文件。
+    - `FileChannel` 的`transferTo()/transferFrom()`是 NIO 基于发送文件（`sendfile`）这种零拷贝方式的提供的一种实现，底层实际是调用了 Linux 内核的 `sendfile`系统调用。它可以直接将文件数据从磁盘发送到网络，而不需要经过用户空间的缓冲区。
+  
   * AIO
   
     异步 IO 是基于事件和回调机制实现的，也就是**应用操作之后会直接返回，不会堵塞在那里，当后台处理完成，操作系统会通知相应的线程进行后续的操作**。
   
     ![img](https://oss.javaguide.cn/github/javaguide/java/io/3077e72a1af049559e81d18205b56fd7~tplv-k3u1fbpfcp-watermark.png)
+
+
 
 #### Unsafe类作用
 

@@ -13,7 +13,7 @@
 * `Set`: 存储的元素不可重复的。
   - `HashSet`(**无序**，唯一): 基于 `HashMap` 实现的，底层采用 `HashMap` 来保存元素。
   - `LinkedHashSet`: `LinkedHashSet` 是 `HashSet` 的子类，并且其内部是通过 `LinkedHashMap` 来实现的，满足FIFIO使用特性。
-  - `TreeSet`(**有序**，唯一): 红黑树(自平衡的排序二叉树)。
+  - `TreeSet`(**有序**，唯一): 红黑树(**自平衡的排序二叉树**)。
 * `Queue/Deque`: `Queue`按特定的排队规则来确定先后顺序，存储的元素是有序的、可重复的，`Queue` 是单端队列，只能从一端插入元素，另一端删除元素，`Deque` 是双端队列，在队列的两端均可以插入或删除元素。。
   * `PriorityQueue`: `Object[]` 数组来实现的小顶堆
   * `DelayQueue`:基于`PriorityQueue`实现
