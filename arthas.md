@@ -277,3 +277,29 @@ thread -b
 # 查看指定状态的线程
 thread -state WAITING
 ```
+
+
+
+# 实践案例
+
+### 1.定位当前高cpu占用线程与相关代码
+
+dashboard+thread+jad命令
+
+https://blog.csdn.net/oWhatever12/article/details/126677166
+
+### 2.定位时间范围内CPU使用情况,进而分析高占用方法
+
+profile命令
+
+https://blog.csdn.net/weixin_31257709/article/details/131300641?spm=1001.2101.3001.6650.1&utm_medium=distribute.pc_relevant.none-task-blog-2%7Edefault%7ECTRLIST%7ERate-1-131300641-blog-126677166.235%5Ev43%5Epc_blog_bottom_relevance_base5&depth_1-utm_source=distribute.pc_relevant.none-task-blog-2%7Edefault%7ECTRLIST%7ERate-1-131300641-blog-126677166.235%5Ev43%5Epc_blog_bottom_relevance_base5&utm_relevant_index=2
+
+### 3.定位某方法一段时间内调用频率与一些统计数据
+
+monitor命令
+
+https://blog.csdn.net/weixin_31257709/article/details/131300641?spm=1001.2101.3001.6650.1&utm_medium=distribute.pc_relevant.none-task-blog-2%7Edefault%7ECTRLIST%7ERate-1-131300641-blog-126677166.235%5Ev43%5Epc_blog_bottom_relevance_base5&depth_1-utm_source=distribute.pc_relevant.none-task-blog-2%7Edefault%7ECTRLIST%7ERate-1-131300641-blog-126677166.235%5Ev43%5Epc_blog_bottom_relevance_base5&utm_relevant_index=2
+
+### 4.内存占用过大排查
+
+可以使用heapdump命令导出当前堆情况再使用jprofile工具分析

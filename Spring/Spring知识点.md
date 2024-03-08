@@ -441,8 +441,325 @@ Class B {
 }
 ```
 
+* **`TransactionDefinition.PROPAGATION_REQUIRED`**
 
+  `@Transactional`注解默认使用就是这个事务传播行为。如果当前存在事务，则加入该事务；如果当前没有事务，则创建一个新的事务。
+
+  - 如果外部方法没有开启事务的话，`Propagation.REQUIRED`修饰的内部方法会新开启自己的事务，且开启的事务相互独立，互不干扰。
+  - 如果外部方法开启事务并且被`Propagation.REQUIRED`的话，所有`Propagation.REQUIRED`修饰的内部方法和外部方法均属于同一事务 ，只要一个方法回滚，整个事务均回滚。
+
+  ```java
+  //如果我们上面的aMethod()和bMethod()使用的都是PROPAGATION_REQUIRED传播行为的话，两者使用的就是同一个事务，只要其中一个方法回滚，整个事务均回滚
+  @Service
+  Class A {
+      @Autowired
+      B b;
+      @Transactional(propagation = Propagation.REQUIRED)
+      public void aMethod {
+          //do something
+          b.bMethod();
+      }
+  }
+  @Service
+  Class B {
+      @Transactional(propagation = Propagation.REQUIRED)
+      public void bMethod {
+         //do something
+      }
+  }
+  
+  ```
+
+* **`TransactionDefinition.PROPAGATION_REQUIRES_NEW`**
+
+  创建一个新的事务，如果当前存在事务，则把当前事务挂起。也就是说不管外部方法是否开启事务，`Propagation.REQUIRES_NEW`修饰的内部方法会新开启自己的事务，且开启的事务相互独立，互不干扰
+
+  ```java
+  //如果我们上面的bMethod()使用PROPAGATION_REQUIRES_NEW事务传播行为修饰，aMethod还是用PROPAGATION_REQUIRED修饰的话。如果aMethod()发生异常回滚，bMethod()不会跟着回滚，因为 bMethod()开启了独立的事务。但是，如果 bMethod()抛出了未被捕获的异常并且这个异常满足事务回滚规则的话,aMethod()同样也会回滚，因为这个异常被 aMethod()的事务管理机制检测到了
+  @Service
+  Class A {
+      @Autowired
+      B b;
+      @Transactional(propagation = Propagation.REQUIRED)
+      public void aMethod {
+          //do something
+          b.bMethod();
+      }
+  }
+  
+  @Service
+  Class B {
+      @Transactional(propagation = Propagation.REQUIRES_NEW)
+      public void bMethod {
+         //do something
+      }
+  }
+  ```
+
+* **`TransactionDefinition.PROPAGATION_NESTED`**
+
+  如果当前存在事务，就在嵌套事务内执行；如果当前没有事务，就执行与`TransactionDefinition.PROPAGATION_REQUIRED`类似的操作。也就是说：
+
+  - 在外部方法开启事务的情况下，在内部开启一个新的事务，作为嵌套事务存在。
+  - 如果外部方法无事务，则单独开启一个事务，与 `PROPAGATION_REQUIRED` 类似。
+
+  ```java
+  //如果 bMethod() 回滚的话，aMethod()不会回滚。如果 aMethod() 回滚的话，bMethod()会回滚
+  @Service
+  Class A {
+      @Autowired
+      B b;
+      @Transactional(propagation = Propagation.REQUIRED)
+      public void aMethod {
+          //do something
+          b.bMethod();
+      }
+  }
+  
+  @Service
+  Class B {
+      @Transactional(propagation = Propagation.NESTED)
+      public void bMethod {
+         //do something
+      }
+  }
+  
+  ```
+
+* **`TransactionDefinition.PROPAGATION_MANDATORY`**
+
+  如果当前存在事务，则加入该事务；如果当前没有事务，则抛出异常
+
+* **`TransactionDefinition.PROPAGATION_SUPPORTS`**
+
+  如果当前存在事务，则加入该事务；如果当前没有事务，则以非事务的方式继续运行
+
+* **`TransactionDefinition.PROPAGATION_NOT_SUPPORTED`**
+
+  以非事务方式运行，如果当前存在事务，则把当前事务挂起（什么叫挂起）
+
+* **`TransactionDefinition.PROPAGATION_NEVER`**
+
+  以非事务方式运行，如果当前存在事务，则抛出异常
+
+### 5.事务隔离级别
+
+- **`TransactionDefinition.ISOLATION_DEFAULT`** :使用后端数据库默认的隔离级别，MySQL 默认采用的 `REPEATABLE_READ` 隔离级别 Oracle 默认采用的 `READ_COMMITTED` 隔离级别.
+- **`TransactionDefinition.ISOLATION_READ_UNCOMMITTED`** :最低的隔离级别，使用这个隔离级别很少，因为它允许读取尚未提交的数据变更，**可能会导致脏读、幻读或不可重复读**
+- **`TransactionDefinition.ISOLATION_READ_COMMITTED`** : 允许读取并发事务已经提交的数据，**可以阻止脏读，但是幻读或不可重复读仍有可能发生**
+- **`TransactionDefinition.ISOLATION_REPEATABLE_READ`** : 对同一字段的多次读取结果都是一致的，除非数据是被本身事务自己所修改，**可以阻止脏读和不可重复读，但幻读仍有可能发生。**
+- **`TransactionDefinition.ISOLATION_SERIALIZABLE`** : 最高的隔离级别，完全服从 ACID 的隔离级别。所有的事务依次逐个执行，这样事务之间就完全不可能产生干扰，也就是说，**该级别可以防止脏读、不可重复读以及幻读**。但是这将严重影响程序的性能。通常情况下也不会用到该级别。
+
+### 6.回滚规则
+
+默认情况下，事务只有遇到运行期异常（`RuntimeException` 的子类）时才会回滚，`Error` 也会导致事务回滚，但是，在遇到检查型（Checked）异常时不会回滚。
+
+```java
+//如果你想要回滚你定义的特定的异常类型的话
+@Transactional(rollbackFor= MyException.class)
+```
+
+### 7.@Transactional使用范围
+
+- **方法**：推荐将注解使用于方法上，不过需要注意的是：**该注解只能应用到 public 方法上，否则不生效。**
+- **类**：如果这个注解使用在类上的话，表明该注解对该类中**所有的 public 方法都生效**。
+- **接口**：不推荐在接口上使用
+
+### 8.事务超时设置
+
+就是指一个事务所允许执行的最长时间，如果超过该时间限制但事务还没有完成，则自动回滚事务。在 `TransactionDefinition` 中以 int 的值来表示超时时间，其单位是秒，默认值为-1，这表示事务的超时时间取决于底层事务系统或者没有超时时间
+
+```java
+@Transactional(timeout=)
+```
+
+### 9.自调用问题
+
+当一个方法被标记了`@Transactional` 注解的时候，Spring 事务管理器只会在被其他类方法调用的时候生效，而不会在一个类中方法调用生效。
+
+这是因为 Spring AOP 工作原理决定的。因为 Spring AOP 使用动态代理来实现事务的管理，它会在运行的时候为带有 `@Transactional` 注解的方法生成代理对象，并在方法调用的前后应用事物逻辑。如果该方法被其他类调用我们的代理对象就会拦截方法调用并处理事务。但是在一个类中的其他方法内部调用的时候，我们代理对象就无法拦截到这个内部调用，因此事务也就失效了**。解决办法就是避免同一类中自调用或者使用 AspectJ 取代 Spring AOP 代理。**
+
+```java
+//MyService 类中的method1()调用method2()就会导致method2()的事务失效。
+@Service
+public class MyService {
+
+private void method1() {
+     method2();
+     //......
+}
+@Transactional
+ public void method2() {
+     //......
+  }
+}
+
+```
+
+或者用如下解决方案
+
+```java
+@Service
+public class MyService {
+
+private void method1() {
+     ((MyService)AopContext.currentProxy()).method2(); // 先获取该类的代理对象，然后通过代理对象调用method2。
+     //......
+}
+@Transactional
+ public void method2() {
+     //......
+  }
+}
+```
+
+
+
+# Spring参数校验
+
+### 1.请求参数校验
+
+https://javaguide.cn/system-design/framework/spring/spring-common-annotations.html#_6-%E5%8F%82%E6%95%B0%E6%A0%A1%E9%AA%8C
+
+### 2.配置参数校验
+
+使用@ConfigurationProperties+@Validated+@EnableConfigurationProperites，当properties参数校验不通过时项目会抛出异常，无法正常启动
 
 # Spring设计模式
 
 https://javaguide.cn/system-design/framework/spring/spring-design-patterns-summary.html
+
+# SpringBoot自动装配
+
+> 1. 什么是 SpringBoot 自动装配？
+> 2. SpringBoot 是如何实现自动装配的？如何实现按需加载？
+> 3. 如何实现一个 Starter？
+
+SpringBoot 定义了一套接口规范，这套规范规定：SpringBoot 在启动时会扫描外部引用 jar 包中的`META-INF/spring.factories`文件，将文件中配置的类型信息加载到 Spring 容器（此处涉及到 JVM 类加载机制与 Spring 的容器知识），并执行类中定义的各种操作。对于外部 jar 来说，只需要按照 SpringBoot 定义的标准，就能将自己的功能装置进 SpringBoot。
+
+### 1.@SpringBootApplication注解
+
+`@SpringBootApplication`看作是 `@Configuration`、`@EnableAutoConfiguration`、`@ComponentScan` 注解的集合。根据 SpringBoot 官网，这三个注解的作用分别是
+
+- `@EnableAutoConfiguration`：启用 SpringBoot 的自动配置机制
+- `@Configuration`：允许在上下文中注册额外的 bean 或导入其他配置类
+- `@ComponentScan`：扫描被`@Component` (`@Service`,`@Controller`)注解的 bean，注解默认会扫描启动类所在的包下所有的类 ，可以自定义不扫描某些 bean。如下图所示，容器中将排除`TypeExcludeFilter`和`AutoConfigurationExcludeFilter`。
+
+![img](https://oss.javaguide.cn/p3-juejin/bcc73490afbe4c6ba62acde6a94ffdfd~tplv-k3u1fbpfcp-watermark.png)
+
+### 2.@EnableAutoConfiguration
+
+`EnableAutoConfiguration` 只是一个简单地注解，自动装配核心功能的实现实际是通过 `AutoConfigurationImportSelector`类。
+
+`AutoConfigurationImportSelector` 类实现了 `ImportSelector`接口，也就实现了这个接口中的 `selectImports`方法，该方法主要用于**获取所有符合条件的类的全限定类名，这些类需要被加载到 IoC 容器中**。
+
+```java
+public class AutoConfigurationImportSelector implements DeferredImportSelector, BeanClassLoaderAware, ResourceLoaderAware, BeanFactoryAware, EnvironmentAware, Ordered {
+
+}
+
+public interface DeferredImportSelector extends ImportSelector {
+
+}
+
+public interface ImportSelector {
+    String[] selectImports(AnnotationMetadata var1);
+}
+
+```
+
+getAutoConfigurationEntry通过扫描加载的jar中对应的/META-INF/spring.factories加载自动配置类
+
+```java
+private static final String[] NO_IMPORTS = new String[0];
+
+public String[] selectImports(AnnotationMetadata annotationMetadata) {
+        // <1>.判断自动装配开关是否打开
+        if (!this.isEnabled(annotationMetadata)) {
+            return NO_IMPORTS;
+        } else {
+          //<2>.获取所有需要装配的bean
+            AutoConfigurationMetadata autoConfigurationMetadata = AutoConfigurationMetadataLoader.loadMetadata(this.beanClassLoader);
+            //getAutoConfigurationEntry
+            AutoConfigurationImportSelector.AutoConfigurationEntry autoConfigurationEntry = this.getAutoConfigurationEntry(autoConfigurationMetadata, annotationMetadata);
+            return StringUtils.toStringArray(autoConfigurationEntry.getConfigurations());
+        }
+    }
+
+```
+
+//getAutoConfigurationEntry分析
+
+```java
+private static final AutoConfigurationEntry EMPTY_ENTRY = new AutoConfigurationEntry();
+
+AutoConfigurationEntry getAutoConfigurationEntry(AutoConfigurationMetadata autoConfigurationMetadata, AnnotationMetadata annotationMetadata) {
+        //<1>.
+        if (!this.isEnabled(annotationMetadata)) {
+            return EMPTY_ENTRY;
+        } else {
+            //<2>. 用于获取EnableAutoConfiguration注解中的 exclude 和 excludeName。
+            AnnotationAttributes attributes = this.getAttributes(annotationMetadata);
+            //<3>.获取需要自动装配的所有配置类，读取META-INF/spring.factories
+            List<String> configurations = this.getCandidateConfigurations(annotationMetadata, attributes);
+            //<4>.这一步有经历了一遍筛选，@ConditionalOnXXX 中的所有条件都满足，该类才会生效
+            configurations = this.removeDuplicates(configurations);
+            Set<String> exclusions = this.getExclusions(annotationMetadata, attributes);
+            this.checkExcludedClasses(configurations, exclusions);
+            configurations.removeAll(exclusions);
+            configurations = this.filter(configurations, autoConfigurationMetadata);
+            this.fireAutoConfigurationImportEvents(configurations, exclusions);
+            return new AutoConfigurationImportSelector.AutoConfigurationEntry(configurations, exclusions);
+        }
+    }
+//1isEnabled
+//判断自动装配开关是否打开。默认spring.boot.enableautoconfiguration=true，可在 application.properties 或 application.yml 中设置
+protected boolean isEnabled(AnnotationMetadata metadata) {
+		if (getClass() == AutoConfigurationImportSelector.class) {
+			return getEnvironment().getProperty(EnableAutoConfiguration.ENABLED_OVERRIDE_PROPERTY, Boolean.class, true);
+		}
+		return true;
+	}
+
+```
+
+### 3.starter
+
+[实现自定义starter](https://javaguide.cn/system-design/framework/spring/spring-boot-auto-assembly-principles.html)
+
+SpringBoot Starters 是一系列依赖关系的集合，因为它的存在，项目的依赖之间的关系对我们来说变的更加简单了
+
+### 4.软件配置
+
+* 配置jetty作为web容器
+
+  ```xml
+  <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-web</artifactId>
+      <!-- 排除默认的 Tomcat 依赖 -->
+      <exclusions>
+          <exclusion>
+              <groupId>org.springframework.boot</groupId>
+              <artifactId>spring-boot-starter-tomcat</artifactId>
+          </exclusion>
+      </exclusions>
+  </dependency>
+  <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-jetty</artifactId>
+  </dependency>
+  ```
+
+### 5.配置文件优先级
+
+优先级由高到底顺序，高优先级会覆盖底优先级（注意还可以通过spring.config.location的启动参数来指定）：
+
+* 项目目录下config目录下的配置文件
+* 项目目录下配置文件
+* classpath下config目录下配置文件
+* classpath下配置文件
+
+### 6.定时任务
+
+使用@Scheduled注解实现，且springboot启动类需要加上@EnableScheduling
